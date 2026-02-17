@@ -23,11 +23,14 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.3",
     "puppeteer": "^21.6.1",
-    "winston": "^3.11.0"
+    "swagger-ui-express": "^5.0.1",
+    "winston": "^3.11.0",
+    "yamljs": "^0.3.0"
   },
   "devDependencies": {
     "eslint": "^8.55.0",
     "jest": "^29.7.0",
+    "jest-openapi": "^0.14.2",
     "nodemon": "^3.0.2",
     "supertest": "^6.3.3"
   }
