@@ -1,6 +1,5 @@
 name: magilam_customer_app
-description: Magilam Foods Customer Mobile Application
-
+description: Magilam Foods Customer App
 publish_to: "none"
 
 version: 1.0.0+1
@@ -14,15 +13,6 @@ dependencies:
 
   cupertino_icons: ^1.0.6
 
-  # State Management
-  flutter_riverpod: ^2.5.1
-
-  # HTTP Client (for backend API)
-  dio: ^5.4.0
-
-  # Secure Storage (for JWT tokens)
-  flutter_secure_storage: ^9.0.0
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -31,3 +21,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/logo.png
+    - assets/google.png
+    - assets/apple.png
+

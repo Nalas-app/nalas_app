@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
-import 'theme_provider.dart';
+import 'theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,11 +23,12 @@ class _SplashScreenState extends State<SplashScreen>
         AnimationController(vsync: this, duration: const Duration(seconds: 1));
 
     _scaleAnimation =
-        CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
+        CurvedAnimation(parent: _controller, curve: Curves.easeOutBack);
 
     _controller.forward();
 
-    Timer(const Duration(seconds: 2), () {
+    // 4 seconds splash duration
+    Timer(const Duration(seconds: 4), () {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -44,16 +45,56 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.orange,
-      body: Center(
-        child: ScaleTransition(
-          scale: _scaleAnimation,
-          child: const Icon(
-            Icons.restaurant_menu,
-            size: 120,
-            color: AppColors.greyBlack,
-          ),
-        ),
+      backgroundColor: AppColors.sandalBackground,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          double screenWidth = constraints.maxWidth;
+          double screenHeight = constraints.maxHeight;
+
+          // Responsive logo scaling
+          double logoWidth;
+
+          if (screenWidth < 400) {
+            logoWidth = screenWidth * 0.7; // small phones
+          } else if (screenWidth < 800) {
+            logoWidth = screenWidth * 0.5; // normal phones & tablets
+          } else {
+            logoWidth = 350; // laptops/web
+          }
+
+          return Column(
+            children: [
+              const Spacer(),
+
+              // Centered Logo
+              Center(
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: Image.asset(
+                    "assets/logo.png",
+                    width: logoWidth,
+                  ),
+                ),
+              ),
+
+              const Spacer(),
+
+              // NRC Branding Bottom Center
+              Padding(
+                padding: EdgeInsets.only(
+                  bottom: screenHeight * 0.04,
+                ),
+                child: const Text(
+                  "Part of NRC Group",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textDark,
+                  ),
+                ),
+              )
+            ],
+          );
+        },
       ),
     );
   }
