@@ -39,6 +39,7 @@ CREATE TABLE menu_items (
     image_url VARCHAR(500),
     is_customizable BOOLEAN DEFAULT false,
     is_active BOOLEAN DEFAULT true,
+    unit_price DECIMAL(10,2) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
