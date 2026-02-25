@@ -31,9 +31,7 @@ const createTransactionSchema = Joi.object({
 });
 
 const reserveStockSchema = Joi.object({
-  ingredient_id: Joi.string().uuid().required(),
-  quantity: Joi.number().min(0).required(),
-  order_id: Joi.string().uuid().required()
+  quantity: Joi.number().min(0).required()
 });
 
 const querySchema = Joi.object({
