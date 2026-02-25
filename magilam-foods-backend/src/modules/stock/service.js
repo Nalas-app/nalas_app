@@ -212,17 +212,40 @@ class StockService {
     }));
   }
 
-  async getProcurementAlerts() {
+  async getProcurementAlerts(filters = {}) {
     const alerts = await stockRepository.getProcurementAlerts();
 
-    return alerts.map(a => ({
-      ingredient_id: a.id,
-      ingredient_name: a.name,
-      current_level: a.available_quantity || 0,
-      reorder_level: a.reorder_level,
-      unit: a.unit,
-      status: Number(a.available_quantity || 0) <= Number(a.reorder_level || 0) * 0.5 ? 'CRITICAL' : 'LOW'
-    }));
+    const normalizedAlerts = alerts.map(a => {
+      const currentLevel = Number(a.available_quantity || 0);
+      const reorderLevel = Number(a.reorder_level || 0);
+      const status = currentLevel <= reorderLevel * 0.5 ? 'CRITICAL' : 'LOW';
+
+      return {
+        ingredient_id: a.id,
+        ingredient_name: a.name,
+        current_level: currentLevel,
+        reorder_level: reorderLevel,
+        unit: a.unit,
+        status
+      };
+    });
+
+    if (filters.severity) {
+      return normalizedAlerts.filter(alert => alert.status === filters.severity);
+    }
+
+    return normalizedAlerts;
+  }
+
+  getProcurementAlertsSummary(alerts) {
+    const critical = alerts.filter(alert => alert.status === 'CRITICAL').length;
+    const low = alerts.filter(alert => alert.status === 'LOW').length;
+
+    return {
+      total: alerts.length,
+      critical,
+      low
+    };
   }
 
   // ===== STOCK RESERVATION (for orders) =====
