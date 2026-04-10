@@ -14,7 +14,7 @@ export default function Home() {
     } else {
       router.replace("/login");
     }
-  }, [token, router]);
+  }, [token]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">
