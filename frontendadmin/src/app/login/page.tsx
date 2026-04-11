@@ -26,25 +26,18 @@ function LoginForm() {
         setError("");
 
         try {
-            // Hardcoded test credentials
-            if (
-                data.email === "testing@gmail.com" &&
-                data.password === "testing@54321"
-            ) {
-                const fakeToken = "fake-token-for-testing";
-
-                // Set cookie
-                document.cookie = `token=${fakeToken}; path=/; max-age=86400`;
-
-                // Optional: also store in Zustand if needed
-                setToken(fakeToken);
-
+            const response = await login(data);
+            
+            if (response && response.token) {
+                // Store token in Zustand and localStorage/cookie
+                setToken(response.token);
+                
+                // Redirect to dashboard
                 router.push("/dashboard");
-            } else {
-                setError("Invalid credentials");
             }
         } catch (err: any) {
-            setError("Login failed");
+            const errorMessage = err.response?.data?.message || "Login failed";
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
