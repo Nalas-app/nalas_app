@@ -515,6 +515,9 @@ class OrderService {
 
     return ordersWithItems;
   }
+  async getDashboardSummary() {
+    return await orderRepository.getDashboardSummary();
+  }
 }
 
 module.exports = new OrderService();

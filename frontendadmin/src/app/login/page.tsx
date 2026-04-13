@@ -28,12 +28,25 @@ function LoginForm() {
         try {
             const response = await login(data);
             
-            if (response && response.token) {
+            // The backend returns { success: true, data: { user, token } }
+            // Since auth.service returns response.data, the structure here is { success, data, message }
+            const payload = response.data || response; // Fallback just in case
+            
+            if (payload && payload.token) {
+                // Ensure only admins can login to the admin UI
+                if (payload.user?.role !== "admin" && payload.user?.role !== "super_admin") {
+                    setError("Access denied: You do not have administrative privileges.");
+                    setIsLoading(false);
+                    return;
+                }
+
                 // Store token in Zustand and localStorage/cookie
-                setToken(response.token);
+                setToken(payload.token);
                 
                 // Redirect to dashboard
                 router.push("/dashboard");
+            } else {
+                setError("Invalid response from server. Missing token.");
             }
         } catch (err: any) {
             const errorMessage = err.response?.data?.message || "Login failed";
@@ -85,7 +98,7 @@ function LoginForm() {
                                     id="email"
                                     type="email"
                                     placeholder="admin@nalas.com"
-                                    className="w-full px-4 py-3 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none transition-all"
+                                    className="w-full px-4 py-3 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none transition-all text-gray-900 bg-white"
                                     style={{
                                         background: "rgba(255,255,255,0.08)",
                                         border: errors.email ? "1px solid #f87171" : "1px solid rgba(255,255,255,0.15)",
@@ -107,7 +120,7 @@ function LoginForm() {
                                     id="password"
                                     type="password"
                                     placeholder="••••••••"
-                                    className="w-full px-4 py-3 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none transition-all"
+                                    className="w-full px-4 py-3 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none transition-all text-gray-900 bg-white"
                                     style={{
                                         background: "rgba(255,255,255,0.08)",
                                         border: errors.password ? "1px solid #f87171" : "1px solid rgba(255,255,255,0.15)",

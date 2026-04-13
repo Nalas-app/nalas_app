@@ -12,6 +12,14 @@ const {
 
 const router = express.Router();
 
+// Get dashboard summary (admin only)
+router.get(
+  '/dashboard-summary',
+  authenticate,
+  requireRole('admin', 'super_admin'),
+  orderController.getDashboardSummary
+);
+
 // Get all orders (admin only)
 router.get(
   '/',

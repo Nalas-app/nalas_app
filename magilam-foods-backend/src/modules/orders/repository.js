@@ -202,6 +202,40 @@ class OrderRepository {
     const query = 'DELETE FROM order_stock_reservations WHERE order_id = $1';
     await db.query(query, [orderId]);
   }
+
+  async getDashboardSummary() {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Total active orders count (status IN quoted, confirmed, preparing)
+    const activeOrdersQuery = `
+      SELECT count(*) as active_count
+      FROM orders
+      WHERE status IN ('quoted', 'confirmed', 'preparing')
+    `;
+    const activeCountResult = await db.query(activeOrdersQuery);
+
+    // Total revenue across all time (status = completed, or just total_amount of confirmed/completed)
+    const revenueQuery = `
+      SELECT coalesce(SUM(total_amount), 0) as total_revenue
+      FROM orders
+      WHERE status IN ('confirmed', 'preparing', 'completed')
+    `;
+    const revenueResult = await db.query(revenueQuery);
+
+    // Orders scheduled for today
+    const todaysOrdersQuery = `
+      SELECT count(*) as today_count
+      FROM orders
+      WHERE event_date = $1 AND status != 'cancelled'
+    `;
+    const todaysOrdersResult = await db.query(todaysOrdersQuery, [today]);
+
+    return {
+      activeOrders: parseInt(activeCountResult.rows[0].active_count),
+      totalRevenue: parseFloat(revenueResult.rows[0].total_revenue),
+      todaysOrders: parseInt(todaysOrdersResult.rows[0].today_count)
+    };
+  }
 }
 
 module.exports = new OrderRepository();

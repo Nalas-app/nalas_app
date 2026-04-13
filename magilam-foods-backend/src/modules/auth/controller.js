@@ -28,6 +28,29 @@ class AuthController {
       next(error);
     }
   }
+  async logout(req, res, next) {
+    try {
+      res.json({
+        success: true,
+        message: 'Logout successful'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getProfile(req, res, next) {
+    try {
+      // Return user info that was stored in token decoded payload
+      res.json({
+        success: true,
+        data: req.user,
+        message: 'Profile retrieved successfully'
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new AuthController();

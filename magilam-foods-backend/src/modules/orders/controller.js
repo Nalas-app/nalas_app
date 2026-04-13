@@ -152,6 +152,19 @@ class OrderController {
       next(error);
     }
   }
+  async getDashboardSummary(req, res, next) {
+    try {
+      const summary = await orderService.getDashboardSummary();
+      
+      res.json({
+        success: true,
+        message: 'Dashboard summary retrieved successfully',
+        data: summary
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new OrderController();
