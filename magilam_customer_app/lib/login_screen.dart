@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'theme.dart';
-import 'register_screen.dart';
-import 'google_login_screen.dart';
-import 'apple_login_screen.dart';
+import '../theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,227 +8,143 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _buttonController;
-  late Animation<double> _scaleAnimation;
+class _LoginScreenState extends State<LoginScreen> {
 
-  @override
-  void initState() {
-    super.initState();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
 
-    _buttonController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 120),
-      lowerBound: 0.95,
-      upperBound: 1.0,
-    )..forward();
+  bool isPasswordVisible = false;
 
-    _scaleAnimation = _buttonController;
-  }
-
-  void _onTapDown(_) => _buttonController.reverse();
-  void _onTapUp(_) => _buttonController.forward();
-
-  @override
-  void dispose() {
-    _buttonController.dispose();
-    super.dispose();
+  // 🔥 FIXED LOGIN FUNCTION
+  void _login() {
+    Navigator.pushReplacementNamed(context, '/menu');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.sandalBackground,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          double screenWidth = constraints.maxWidth;
-          double screenHeight = constraints.maxHeight;
 
-          double formWidth;
-          if (screenWidth < 400) {
-            formWidth = screenWidth * 0.92;
-          } else if (screenWidth < 900) {
-            formWidth = 420;
-          } else {
-            formWidth = 450;
-          }
+      body: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
 
-          return Center(
-            child: SingleChildScrollView(
-              child: SizedBox(
-                width: formWidth,
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: screenHeight * 0.05,
-                  ),
-                  child: Column(
-                    children: [
+              // 🔥 LOGO
+              Image.asset(
+                'assets/logo.png',
+                height: 100,
+              ),
 
-                      Image.asset(
-                        "assets/logo.png",
-                        width: formWidth * 0.6,
-                      ),
-                      const SizedBox(height: 40),
+              const SizedBox(height: 20),
 
-                      _buildTextField("Email"),
-                      const SizedBox(height: 20),
-
-                      _buildTextField("Password", isPassword: true),
-                      const SizedBox(height: 8),
-
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () {},
-                          child: const Text(
-                            "Forgot Password?",
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 15),
-
-                      GestureDetector(
-                        onTapDown: _onTapDown,
-                        onTapUp: _onTapUp,
-                        onTapCancel: () => _buttonController.forward(),
-                        child: ScaleTransition(
-                          scale: _scaleAnimation,
-                          child: SizedBox(
-                            width: double.infinity,
-                            height: 55,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.mossGreen,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                              ),
-                              onPressed: () {},
-                              child: const Text(
-                                "LOGIN",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 30),
-
-                      Row(
-                        children: [
-                          Expanded(child: Divider()),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 10),
-                            child: Text("OR"),
-                          ),
-                          Expanded(child: Divider()),
-                        ],
-                      ),
-
-                      const SizedBox(height: 25),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _socialButton("assets/google.png", () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => GoogleLoginScreen(),
-                              ),
-                            );
-                          }),
-                          const SizedBox(width: 30),
-                          _socialButton("assets/apple.png", () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => AppleLoginScreen(),
-                              ),
-                            );
-                          }),
-                        ],
-                      ),
-
-                      const SizedBox(height: 25),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text("Don’t have an account? "),
-                          GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => RegisterScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text(
-                              "Register Now",
-                              style: TextStyle(
-                                color: AppColors.mossGreen,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+              const Text(
+                "Welcome Back",
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
-  Widget _buildTextField(String hint, {bool isPassword = false}) {
-    return TextField(
-      obscureText: isPassword,
-      decoration: InputDecoration(
-        hintText: hint,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide: const BorderSide(color: Colors.grey),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(30),
-          borderSide:
-              const BorderSide(color: AppColors.orangeAccent, width: 2),
-        ),
-      ),
-    );
-  }
+              const SizedBox(height: 30),
 
-  Widget _socialButton(String assetPath, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(50),
-      child: Container(
-        height: 55,
-        width: 55,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: AppColors.mossGreen),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Image.asset(assetPath),
+              // 🔥 SMALL INPUT FIELDS
+              Container(
+                width: 320,
+                child: Column(
+                  children: [
+
+                    // EMAIL
+                    TextField(
+                      controller: emailController,
+                      decoration: InputDecoration(
+                        hintText: "Email",
+                        prefixIcon: const Icon(Icons.email),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // PASSWORD
+                    TextField(
+                      controller: passwordController,
+                      obscureText: !isPasswordVisible,
+                      decoration: InputDecoration(
+                        hintText: "Password",
+                        prefixIcon: const Icon(Icons.lock),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            isPasswordVisible
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              isPasswordVisible = !isPasswordVisible;
+                            });
+                          },
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 30),
+
+                    // 🔥 LOGIN BUTTON (FIXED)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.mossGreen,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
+                        onPressed: _login,
+                        child: const Text("Login"),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // REGISTER LINK
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+
+                        const Text("Don't have an account? "),
+
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushNamed(context, '/register');
+                          },
+                          child: const Text(
+                            "Register",
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
