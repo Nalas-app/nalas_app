@@ -11,28 +11,56 @@ import 'billing_screen.dart';
 import 'success_screen.dart';
 import 'date_time_screen.dart';
 import 'order_history_screen.dart';
-import 'address_screen.dart';
+ import 'address_screen.dart';
+import 'package:provider/provider.dart';
+import 'services/localStorage.dart';
+import 'providers/theme_provider.dart';
+import 'providers/auth_provider.dart';
+import 'providers/cart_provider.dart';
+import 'providers/menu_provider.dart';
 
 // Theme
 import 'theme.dart';
 
-void main() {
-  runApp(const MyApp());
+ void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  final storageService = await LocalStorageService.init();
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider(storageService)),
+        ChangeNotifierProvider(create: (_) => AuthProvider(storageService)),
+        ChangeNotifierProvider(create: (_) => MenuProvider()),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  @override
+   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Magilam Foods',
 
+      themeMode: themeProvider.themeMode,
       theme: ThemeData(
         scaffoldBackgroundColor: AppColors.sandalBackground,
         primaryColor: AppColors.mossGreen,
         useMaterial3: true,
+        brightness: Brightness.light,
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        primaryColor: AppColors.mossGreen,
       ),
 
       // ✅ KEEP YOUR CURRENT FLOW

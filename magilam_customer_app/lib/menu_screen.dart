@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import '../theme.dart';
-import '../cart.dart';
+ import '../theme.dart';
+import 'package:provider/provider.dart';
+import 'providers/menu_provider.dart';
+import 'providers/cart_provider.dart';
+import 'providers/auth_provider.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -11,27 +14,13 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> {
 
-  int selectedIndex = 0;
-
-  final List categories = [
-    "All",
-    "Veg",
-    "Non-Veg",
-    "Desserts",
-  ];
-
-  final List<Map<String, dynamic>> items = [
-    {"name": "Paneer Butter Masala", "price": 250, "category": "Veg"},
-    {"name": "Chicken Biryani", "price": 300, "category": "Non-Veg"},
-    {"name": "Veg Fried Rice", "price": 180, "category": "Veg"},
-    {"name": "Ice Cream", "price": 120, "category": "Desserts"},
-  ];
-
-  List get filteredItems {
-    if (categories[selectedIndex] == "All") return items;
-
-    return items.where((item) =>
-        item["category"] == categories[selectedIndex]).toList();
+   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MenuProvider>().loadCategories();
+      context.read<MenuProvider>().loadMenuItems();
+    });
   }
 
   void _showLogoutDialog() {
@@ -49,9 +38,10 @@ class _MenuScreenState extends State<MenuScreen> {
             child: const Text("Cancel"),
           ),
 
-          TextButton(
+           TextButton(
             onPressed: () {
-              Cart.clearCart();
+              context.read<CartProvider>().clearCart();
+              context.read<AuthProvider>().logout();
 
               Navigator.pushNamedAndRemoveUntil(
                 context,
@@ -77,36 +67,37 @@ class _MenuScreenState extends State<MenuScreen> {
 
         actions: [
 
-          // 🛒 CART BADGE
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.shopping_cart, color: Colors.white),
-                onPressed: () {
-                  Navigator.pushNamed(context, '/billing');
-                },
-              ),
-
-              if (Cart.getTotalItems() > 0)
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      Cart.getTotalItems().toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
+           // 🛒 CART BADGE
+          Consumer<CartProvider>(
+            builder: (context, cart, child) => Stack(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.shopping_cart, color: Colors.white),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/billing');
+                  },
+                ),
+                if (cart.totalQuantity > 0)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        cart.totalQuantity.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
 
           // PROFILE BUTTON
@@ -152,114 +143,130 @@ class _MenuScreenState extends State<MenuScreen> {
 
     // 👉 KEEP EVERYTHING BELOW SAME
 
-          // 🔥 CATEGORY BUBBLES
-          SizedBox(
-            height: 70,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                bool isSelected = selectedIndex == index;
+           // 🔥 CATEGORY BUBBLES
+          Consumer<MenuProvider>(
+            builder: (context, menuProvider, child) {
+              final categories = menuProvider.categories;
+              
+              if (menuProvider.isLoadingCategories) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedIndex = index;
-                    });
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 15),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.mossGreen
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Center(
-                      child: Text(
-                        categories[index],
-                        style: TextStyle(
+              return SizedBox(
+                height: 70,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: categories.length + 1,
+                  itemBuilder: (context, index) {
+                    bool isAll = index == 0;
+                    String? catId = isAll ? null : categories[index - 1].id;
+                    String catName = isAll ? "All" : categories[index - 1].name;
+                    bool isSelected = menuProvider.selectedCategoryId == catId;
+
+                    return GestureDetector(
+                      onTap: () {
+                        menuProvider.selectCategory(catId);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 15),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
                           color: isSelected
-                              ? Colors.white
-                              : Colors.black,
-                          fontWeight: FontWeight.w600,
+                              ? AppColors.mossGreen
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Center(
+                          child: Text(
+                            catName,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.black,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
+                    );
+                  },
+                ),
+              );
+            },
           ),
 
           // 🔥 FOOD LIST
           Expanded(
-            child: ListView.builder(
-              itemCount: filteredItems.length,
-              itemBuilder: (context, index) {
-                var item = filteredItems[index];
-                int qty = Cart.items[item["name"]] ?? 0;
+            child: Consumer2<MenuProvider, CartProvider>(
+              builder: (context, menu, cart, child) {
+                final displayItems = menu.filteredItems;
 
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: ListTile(
-                    title: Text(item["name"]),
-                    subtitle: Text("₹${item["price"]}"),
+                if (menu.isLoadingItems) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                    trailing: qty == 0
-                        ? ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.mossGreen,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                Cart.addItem(
-                                    item["name"], item["price"]);
-                              });
-                            },
-                            child: const Text("Add"),
-                          )
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
+                if (displayItems.isEmpty) {
+                  return const Center(child: Text("No items found"));
+                }
 
-                              // ➖
-                              IconButton(
-                                icon: const Icon(Icons.remove),
-                                onPressed: () {
-                                  setState(() {
-                                    Cart.removeItem(item["name"]);
-                                  });
-                                },
-                              ),
+                return ListView.builder(
+                  itemCount: displayItems.length,
+                  itemBuilder: (context, index) {
+                    final item = displayItems[index];
+                    int qty = cart.getQuantity(item.id);
 
-                              // COUNT
-                              Text(
-                                qty.toString(),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                    return Card(
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: ListTile(
+                        leading: (item.imageUrl != null)
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  item.imageUrl!,
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(Icons.fastfood),
                                 ),
-                              ),
-
-                              // ➕
-                              IconButton(
-                                icon: const Icon(Icons.add),
+                              )
+                            : null,
+                        title: Text(item.name),
+                        subtitle: Text("₹${item.pricePerUnit} per ${item.baseUnit}"),
+                        trailing: qty == 0
+                            ? ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.mossGreen,
+                                ),
                                 onPressed: () {
-                                  setState(() {
-                                    Cart.addItem(
-                                        item["name"], item["price"]);
-                                  });
+                                  cart.addItem(item);
                                 },
+                                child: const Text("Add"),
+                              )
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.remove),
+                                    onPressed: () => cart.removeItem(item.id),
+                                  ),
+                                  Text(
+                                    qty.toString(),
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.add),
+                                    onPressed: () => cart.addItem(item),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                  ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -268,31 +275,31 @@ class _MenuScreenState extends State<MenuScreen> {
           // 🔥 PROCEED BUTTON
           Padding(
             padding: const EdgeInsets.all(10),
-            child: SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.mossGreen,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+            child: Consumer<CartProvider>(
+              builder: (context, cart, child) => SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.mossGreen,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
                   ),
+                  onPressed: () {
+                    if (cart.itemCount == 0) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Please add at least one item"),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
+                    Navigator.pushNamed(context, '/datetime');
+                  },
+                  child: const Text("Proceed"),
                 ),
-                onPressed: () {
-
-                  if (Cart.getTotalItems() == 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Please add at least one item"),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    return;
-                  }
-
-                  Navigator.pushNamed(context, '/datetime');
-                },
-                child: const Text("Proceed"),
               ),
             ),
           )

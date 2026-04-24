@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'providers/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -9,12 +11,21 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
 
-  @override
+   @override
   void initState() {
     super.initState();
 
-    Future.delayed(const Duration(seconds: 4), () {
-      Navigator.pushReplacementNamed(context, '/login');
+    Future.delayed(const Duration(seconds: 2), () async {
+      final authProvider = context.read<AuthProvider>();
+      final isLoggedIn = await authProvider.tryAutoLogin();
+      
+      if (!mounted) return;
+
+      if (isLoggedIn) {
+        Navigator.pushReplacementNamed(context, '/menu');
+      } else {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
     });
   }
 

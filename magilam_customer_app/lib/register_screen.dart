@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+ import 'package:provider/provider.dart';
+import 'providers/auth_provider.dart';
 import 'theme.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -20,33 +22,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
-  void _register() {
-    if (_formKey.currentState!.validate()) {
-      if (_passwordController.text !=
-          _confirmPasswordController.text) {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
+  Future<void> _register() async {
+    if (_formKey.currentState!.validate()) {
+      if (_passwordController.text != _confirmPasswordController.text) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Passwords do not match"),
             backgroundColor: Colors.red,
           ),
         );
-
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Registration Successful"),
-        ),
+      final authProvider = context.read<AuthProvider>();
+      final success = await authProvider.register(
+        fullName: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        password: _passwordController.text.trim(),
       );
 
-      Navigator.pop(context);
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Registration Successful")),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(authProvider.error ?? 'Registration failed'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
     return Scaffold(
       backgroundColor: AppColors.sandalBackground,
       body: LayoutBuilder(
@@ -77,13 +107,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       const SizedBox(height: 30),
 
-                      _buildTextField("Full Name"),
+                      _buildTextField("Full Name", _nameController),
                       const SizedBox(height: 20),
 
-                      _buildTextField("Email"),
+                      _buildTextField("Email", _emailController),
                       const SizedBox(height: 20),
 
-                      _buildTextField("Phone"),
+                      _buildTextField("Phone", _phoneController),
                       const SizedBox(height: 20),
 
                       _buildPasswordField(
@@ -120,16 +150,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.mossGreen,
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(30),
+                              borderRadius: BorderRadius.circular(30),
                             ),
                           ),
-                          onPressed: _register,
-                          child: const Text(
-                            "REGISTER",
-                            style:
-                                TextStyle(color: Colors.white),
-                          ),
+                           onPressed: authProvider.isLoading ? null : _register,
+                          child: authProvider.isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text(
+                                "REGISTER",
+                                style: TextStyle(color: Colors.white),
+                              ),
                         ),
                       ),
 
@@ -167,8 +201,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildTextField(String hint) {
+  Widget _buildTextField(String hint, TextEditingController controller) {
     return TextFormField(
+      controller: controller,
       validator: (value) {
         if (value == null || value.isEmpty) {
           return "Required";
@@ -177,8 +212,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       },
       decoration: InputDecoration(
         hintText: hint,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30),
         ),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+ import 'package:provider/provider.dart';
+import 'providers/auth_provider.dart';
 import '../theme.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -10,18 +12,49 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
 
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   bool isPasswordVisible = false;
 
-  // 🔥 FIXED LOGIN FUNCTION
-  void _login() {
-    Navigator.pushReplacementNamed(context, '/menu');
+  Future<void> _login() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter email and password')),
+      );
+      return;
+    }
+
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.login(email, password);
+
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.pushReplacementNamed(context, '/menu');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.error ?? 'Login failed'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = context.watch<AuthProvider>();
     return Scaffold(
       backgroundColor: AppColors.sandalBackground,
 
@@ -56,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     // EMAIL
                     TextField(
-                      controller: emailController,
+                      controller: _emailController,
                       decoration: InputDecoration(
                         hintText: "Email",
                         prefixIcon: const Icon(Icons.email),
@@ -73,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     // PASSWORD
                     TextField(
-                      controller: passwordController,
+                      controller: _passwordController,
                       obscureText: !isPasswordVisible,
                       decoration: InputDecoration(
                         hintText: "Password",
@@ -112,8 +145,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        onPressed: _login,
-                        child: const Text("Login"),
+                        onPressed: authProvider.isLoading ? null : _login,
+                        child: authProvider.isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text("Login"),
                       ),
                     ),
 

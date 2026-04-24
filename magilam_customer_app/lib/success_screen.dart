@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
-import '../cart.dart';
 
 class SuccessScreen extends StatelessWidget {
   const SuccessScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-
-    // 🔥 Clear cart after success
-    Cart.clearCart();
 
     return Scaffold(
       backgroundColor: AppColors.sandalBackground,
