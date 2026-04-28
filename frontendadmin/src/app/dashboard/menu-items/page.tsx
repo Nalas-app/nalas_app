@@ -27,8 +27,9 @@ export default function MenuItemsCRUDPage() {
         name: "",
         description: "",
         category_id: "",
-        base_unit: "portion",
+        base_unit: "serving",
         min_quantity: 1,
+        base_price: 0,
         is_customizable: false,
         is_active: true
     });
@@ -60,8 +61,9 @@ export default function MenuItemsCRUDPage() {
             name: "",
             description: "",
             category_id: categories.length > 0 ? categories[0].id : "",
-            base_unit: "portion",
+            base_unit: "serving",
             min_quantity: 1,
+            base_price: 0,
             is_customizable: false,
             is_active: true
         });
@@ -178,6 +180,7 @@ export default function MenuItemsCRUDPage() {
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-xs text-gray-600 border border-gray-200 px-2 rounded w-max">Unit: {item.base_unit}</span>
                                                 <span className="text-xs text-gray-600 border border-gray-200 px-2 rounded w-max">Min Qty: {item.min_quantity}</span>
+                                                <span className="text-xs text-[#689F38] border border-[#689F38]/30 px-2 rounded w-max font-bold">₹{item.base_price || 0}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -258,14 +261,15 @@ export default function MenuItemsCRUDPage() {
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Base Unit</label>
                                         <select 
-                                            value={formData.base_unit || "portion"}
+                                            value={formData.base_unit || "serving"}
                                             onChange={e => setFormData({...formData, base_unit: e.target.value})}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white"
                                         >
-                                            <option value="portion">Portion</option>
+                                            <option value="serving">Serving</option>
                                             <option value="piece">Piece</option>
                                             <option value="kg">Kilogram</option>
                                             <option value="plate">Plate</option>
+                                            <option value="box">Box</option>
                                         </select>
                                     </div>
                                     <div>
@@ -278,6 +282,17 @@ export default function MenuItemsCRUDPage() {
                                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white"
                                         />
                                     </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Base Price (₹) <span className="text-gray-400 font-normal text-xs">(static fallback)</span></label>
+                                    <input 
+                                        type="number" 
+                                        min="0" step="0.01"
+                                        value={formData.base_price || 0}
+                                        onChange={e => setFormData({...formData, base_price: parseFloat(e.target.value) || 0})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white"
+                                    />
                                 </div>
 
                                 <div className="flex gap-4 pt-2">

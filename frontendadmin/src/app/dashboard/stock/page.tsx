@@ -398,11 +398,13 @@ export default function StockManagementPage() {
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Unit of Measurement</label>
                                         <select required value={ingredientFormData.unit} onChange={e => setIngredientFormData({...ingredientFormData, unit: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white">
                                             <option value="kg">Kilogram (kg)</option>
-                                            <option value="g">Gram (g)</option>
-                                            <option value="L">Liter (L)</option>
+                                            <option value="gram">Gram (g)</option>
+                                            <option value="liter">Liter (L)</option>
                                             <option value="ml">Milliliter (ml)</option>
                                             <option value="piece">Piece</option>
-                                            <option value="packet">Packet</option>
+                                            <option value="dozen">Dozen</option>
+                                            <option value="tsp">Teaspoon (tsp)</option>
+                                            <option value="tbsp">Tablespoon (tbsp)</option>
                                         </select>
                                     </div>
                                     <div>

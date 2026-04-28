@@ -178,7 +178,7 @@ export default function DashboardOverviewPage() {
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
                                                     <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold mr-3">
-                                                        {alert.name.charAt(0).toUpperCase()}
+                                                        {typeof alert.name === 'string' && alert.name.length > 0 ? alert.name.charAt(0).toUpperCase() : '?'}
                                                     </div>
                                                     <span className="text-sm font-semibold text-gray-900">{alert.name}</span>
                                                 </div>

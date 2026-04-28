@@ -1,28 +1,49 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMenuItems, MenuItem } from "@/services/menu.service";
+import { getMenuItems, getCategories, createMenuItem, updateMenuItem, deleteMenuItem, MenuItem, MenuCategory } from "@/services/menu.service";
 import theme from "@/utils/theme";
 
 export default function MenuListingPage() {
     const [items, setItems] = useState<MenuItem[]>([]);
+    const [categories, setCategories] = useState<MenuCategory[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
 
-    useEffect(() => {
-        const fetchMenu = async () => {
-            try {
-                const data = await getMenuItems();
-                setItems(data || []);
-            } catch (err: any) {
-                console.error("Failed to load menu UI:", err);
-                setError("Failed to fetch menu items from the database.");
-            } finally {
-                setIsLoading(false);
-            }
-        };
+    // Modal & Form State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formData, setFormData] = useState<Partial<MenuItem>>({
+        name: "",
+        description: "",
+        base_unit: "plate",
+        min_quantity: 1,
+        image_url: "",
+        category_id: "",
+        is_customizable: false,
+        is_active: true
+    });
 
+    const fetchMenu = async () => {
+        setIsLoading(true);
+        try {
+            const [itemsData, catsData] = await Promise.all([
+                getMenuItems(),
+                getCategories().catch(() => [])
+            ]);
+            setItems(itemsData || []);
+            setCategories(catsData || []);
+        } catch (err: any) {
+            console.error("Failed to load menu UI:", err);
+            setError("Failed to fetch menu items from the database.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchMenu();
     }, []);
 
@@ -31,7 +52,72 @@ export default function MenuListingPage() {
         (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
-    if (isLoading) {
+    const handleOpenModal = (item?: MenuItem) => {
+        if (item) {
+            setSelectedItem(item);
+            setFormData({
+                name: item.name,
+                description: item.description,
+                base_unit: item.base_unit,
+                min_quantity: item.min_quantity,
+                image_url: item.image_url || "",
+                category_id: item.category_id,
+                is_customizable: item.is_customizable,
+                is_active: item.is_active
+            });
+        } else {
+            setSelectedItem(null);
+            setFormData({
+                name: "",
+                description: "",
+                base_unit: "plate",
+                min_quantity: 1,
+                image_url: "",
+                category_id: categories.length > 0 ? categories[0].id : "",
+                is_customizable: false,
+                is_active: true
+            });
+        }
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedItem(null);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            if (selectedItem) {
+                await updateMenuItem(selectedItem.id, formData);
+            } else {
+                await createMenuItem(formData);
+            }
+            setIsModalOpen(false);
+            await fetchMenu();
+        } catch (err: any) {
+            console.error(err);
+            alert(err.response?.data?.message || "An error occurred while saving the menu item.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (confirm("Are you sure you want to delete this menu item?")) {
+            try {
+                await deleteMenuItem(id);
+                await fetchMenu();
+            } catch (err: any) {
+                console.error(err);
+                alert(err.response?.data?.message || "Failed to delete item.");
+            }
+        }
+    };
+
+    if (isLoading && items.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-64 space-y-4">
                 <div className="w-12 h-12 border-4 border-gray-200 border-t-[#689F38] rounded-full animate-spin"></div>
@@ -40,29 +126,8 @@ export default function MenuListingPage() {
         );
     }
 
-    if (error) {
-        return (
-            <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg shadow-sm">
-                <div className="flex items-center">
-                    <svg className="w-6 h-6 text-red-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h3 className="text-red-800 font-bold text-lg">Menu Synchronization Error</h3>
-                </div>
-                <p className="text-red-700 mt-2 ml-9">{error}</p>
-                <button 
-                    onClick={() => window.location.reload()}
-                    className="mt-4 ml-9 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded font-medium transition-colors"
-                >
-                    Retry Connection
-                </button>
-            </div>
-        );
-    }
-
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            
             {/* Header Area */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -83,7 +148,10 @@ export default function MenuListingPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
-                    <button className="bg-[#689F38] hover:bg-[#558B2F] text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center shadow-md">
+                    <button 
+                        onClick={() => handleOpenModal()}
+                        className="bg-[#689F38] hover:bg-[#558B2F] text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center shadow-md"
+                    >
                         <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -91,6 +159,24 @@ export default function MenuListingPage() {
                     </button>
                 </div>
             </div>
+
+            {error && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg shadow-sm">
+                    <div className="flex items-center">
+                        <svg className="w-6 h-6 text-red-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <h3 className="text-red-800 font-bold text-lg">Menu Synchronization Error</h3>
+                    </div>
+                    <p className="text-red-700 mt-2 ml-9">{error}</p>
+                    <button 
+                        onClick={fetchMenu}
+                        className="mt-4 ml-9 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded font-medium transition-colors"
+                    >
+                        Retry Connection
+                    </button>
+                </div>
+            )}
 
             {/* Menu Data Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -176,10 +262,16 @@ export default function MenuListingPage() {
                                         </td>
 
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <button className="text-[#689F38] hover:text-[#558B2F] bg-transparent hover:bg-[#689F38]/10 px-2 py-1 rounded transition-colors mr-2">
+                                            <button 
+                                                onClick={() => handleOpenModal(item)}
+                                                className="text-[#689F38] hover:text-[#558B2F] bg-transparent hover:bg-[#689F38]/10 px-2 py-1 rounded transition-colors mr-2"
+                                            >
                                                 Edit
                                             </button>
-                                            <button className="text-red-500 hover:text-red-700 bg-transparent hover:bg-red-50 px-2 py-1 rounded transition-colors">
+                                            <button 
+                                                onClick={() => handleDelete(item.id)}
+                                                className="text-red-500 hover:text-red-700 bg-transparent hover:bg-red-50 px-2 py-1 rounded transition-colors"
+                                            >
                                                 Del
                                             </button>
                                         </td>
@@ -191,6 +283,87 @@ export default function MenuListingPage() {
                 </div>
             </div>
 
+            {/* --- ADD/EDIT MODAL --- */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={handleCloseModal}></div>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg z-10 overflow-hidden flex flex-col transform transition-all max-h-[90vh]">
+                        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+                            <div>
+                                <h2 className="text-lg font-extrabold text-gray-900">{selectedItem ? "Edit Menu Item" : "Add New Menu Item"}</h2>
+                                <p className="text-sm text-gray-500 font-medium">{selectedItem ? "Update culinary details" : "Create a new culinary item"}</p>
+                            </div>
+                            <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-full transition-colors">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto">
+                            <form id="menu-form" onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Item Name</label>
+                                    <input type="text" required value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. Mutton Biryani" />
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Category</label>
+                                    <select required value={formData.category_id || ''} onChange={e => setFormData({...formData, category_id: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 bg-white">
+                                        <option value="" disabled>Select a category</option>
+                                        {categories.map(cat => (
+                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Description <span className="text-gray-400 font-normal text-xs">(optional)</span></label>
+                                    <textarea value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors h-20 resize-none text-sm text-gray-900 placeholder-gray-500 bg-white" placeholder="A brief description of the dish..." />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Base Unit</label>
+                                        <select required value={formData.base_unit || ''} onChange={e => setFormData({...formData, base_unit: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 bg-white">
+                                            <option value="plate">Plate</option>
+                                            <option value="kg">Kilogram (kg)</option>
+                                            <option value="piece">Piece</option>
+                                            <option value="bowl">Bowl</option>
+                                            <option value="pax">Person (Pax)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Min Quantity</label>
+                                        <input type="number" required min="1" step="0.5" value={formData.min_quantity || ''} onChange={e => setFormData({...formData, min_quantity: parseFloat(e.target.value) || 1})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Image URL <span className="text-gray-400 font-normal text-xs">(optional)</span></label>
+                                    <input type="url" value={formData.image_url || ''} onChange={e => setFormData({...formData, image_url: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors text-gray-900 placeholder-gray-500 bg-white" placeholder="https://example.com/image.jpg" />
+                                </div>
+
+                                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg flex flex-col gap-3">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" checked={formData.is_customizable || false} onChange={e => setFormData({...formData, is_customizable: e.target.checked})} className="w-4 h-4 text-[#689F38] rounded border-gray-300 focus:ring-[#689F38]" />
+                                        <span className="text-sm font-bold text-gray-700">Is this dish customizable by customers?</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" checked={formData.is_active ?? true} onChange={e => setFormData({...formData, is_active: e.target.checked})} className="w-4 h-4 text-[#689F38] rounded border-gray-300 focus:ring-[#689F38]" />
+                                        <span className="text-sm font-bold text-gray-700">Active (Visible in menus)</span>
+                                    </label>
+                                </div>
+                            </form>
+                        </div>
+                        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 flex-shrink-0">
+                            <button onClick={handleCloseModal} type="button" className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 font-bold transition-colors">Cancel</button>
+                            <button type="submit" form="menu-form" disabled={isSubmitting} className="px-6 py-2 bg-[#689F38] hover:bg-[#558B2F] text-white rounded-lg font-bold transition-colors shadow-md shadow-[#689F38]/20 flex items-center justify-center min-w-[120px]">
+                                {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : (selectedItem ? "Save Changes" : "Create Item")}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

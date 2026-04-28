@@ -24,7 +24,11 @@ export const getAllStockLevels = async (page = 1, limit = 100): Promise<StockLev
 };
 
 export const recordTransaction = async (data: StockTransactionPayload): Promise<any> => {
-  const response = await api.post("/stock/transactions", data);
+  const payload = { ...data };
+  if (!payload.notes || payload.notes.trim() === "") {
+    delete payload.notes;
+  }
+  const response = await api.post("/stock/transactions", payload);
   return response.data.data;
 };
 
