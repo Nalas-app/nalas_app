@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 
 class ApiService {
   static final ApiService _instance = ApiService._internal();
@@ -7,6 +8,7 @@ class ApiService {
 
   late Dio _dio;
   String? _authToken;
+  String? _refreshToken;
 
   ApiService._internal() {
     _dio = Dio(BaseOptions(
@@ -26,9 +28,33 @@ class ApiService {
         return handler.next(options);
       },
       onError: (DioException e, handler) async {
-        if (e.response?.statusCode == 401) {
-          // Clear token if session is invalid
+        if (e.response?.statusCode == 401 && _refreshToken != null) {
+          // Attempt to refresh the token
+          try {
+            final refreshDio = Dio(BaseOptions(
+              baseUrl: baseUrl,
+              headers: {'Content-Type': 'application/json'},
+            ));
+            final response = await refreshDio.post('/auth/refresh', data: {
+              'refreshToken': _refreshToken,
+            });
+
+            if (response.data['success'] == true && response.data['data'] != null) {
+              final newToken = response.data['data']['accessToken'] ?? response.data['data']['token'];
+              if (newToken != null) {
+                _authToken = newToken;
+                // Retry the original request with the new token
+                e.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+                final retryResponse = await _dio.fetch(e.requestOptions);
+                return handler.resolve(retryResponse);
+              }
+            }
+          } catch (_) {
+            // Refresh failed — clear tokens
+            debugPrint('Token refresh failed');
+          }
           _authToken = null;
+          _refreshToken = null;
         }
         return handler.next(e);
       },
@@ -39,8 +65,13 @@ class ApiService {
     _authToken = token;
   }
 
+  void setRefreshToken(String token) {
+    _refreshToken = token;
+  }
+
   void clearToken() {
     _authToken = null;
+    _refreshToken = null;
   }
 
   String? get token => _authToken;
@@ -71,10 +102,56 @@ class ApiService {
     return response.data;
   }
 
+  Future<Map<String, dynamic>> logout() async {
+    try {
+      final response = await _dio.post('/auth/logout');
+      return response.data;
+    } finally {
+      clearToken();
+    }
+  }
+
+  Future<Map<String, dynamic>> refreshAuthToken() async {
+    final response = await _dio.post('/auth/refresh', data: {
+      if (_refreshToken != null) 'refreshToken': _refreshToken,
+    });
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    final response = await _dio.post('/auth/forgot-password', data: {
+      'email': email,
+    });
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> resetPassword(String token, String newPassword) async {
+    final response = await _dio.post('/auth/reset-password', data: {
+      'token': token,
+      'password': newPassword,
+    });
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> getProfile() async {
+    final response = await _dio.get('/auth/profile');
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> profileData) async {
+    final response = await _dio.put('/auth/profile', data: profileData);
+    return response.data;
+  }
+
   // ─── Menu Endpoints ───────────────────────────────────────
 
   Future<Map<String, dynamic>> fetchCategories() async {
     final response = await _dio.get('/menu/categories');
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> fetchCategory(String categoryId) async {
+    final response = await _dio.get('/menu/categories/$categoryId');
     return response.data;
   }
 
@@ -106,7 +183,7 @@ class ApiService {
 
   // ─── Orders Endpoints ─────────────────────────────────────
 
-  Future<Map<String, dynamic>> fetchMyOrders({
+  Future<dynamic> fetchMyOrders({
     String? status,
     int page = 1,
   }) async {
@@ -118,6 +195,21 @@ class ApiService {
 
   Future<Map<String, dynamic>> createOrder(Map<String, dynamic> orderData) async {
     final response = await _dio.post('/orders', data: orderData);
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> fetchOrder(String orderId) async {
+    final response = await _dio.get('/orders/$orderId');
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> updateOrder(String orderId, Map<String, dynamic> orderData) async {
+    final response = await _dio.put('/orders/$orderId', data: orderData);
+    return response.data;
+  }
+
+  Future<Map<String, dynamic>> cancelOrder(String orderId) async {
+    final response = await _dio.delete('/orders/$orderId');
     return response.data;
   }
 

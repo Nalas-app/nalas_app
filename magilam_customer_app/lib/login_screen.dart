@@ -156,6 +156,22 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
+                    const SizedBox(height: 10),
+
+                    // FORGOT PASSWORD
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushNamed(context, '/forgot-password');
+                      },
+                      child: const Text(
+                        "Forgot Password?",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+
                     const SizedBox(height: 20),
 
                     // REGISTER LINK

@@ -105,7 +105,7 @@ class BillingScreen extends StatelessWidget {
           if (cartProvider.hasRealEstimate) 
             Container(
               padding: const EdgeInsets.all(15),
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withAlpha(25),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
