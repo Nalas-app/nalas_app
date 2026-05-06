@@ -25,6 +25,11 @@ export const getOrders = async (page = 1, limit = 50, filters?: any): Promise<Or
   return response.data.data;
 };
 
+export const getOrderById = async (id: string): Promise<any> => {
+  const response = await api.get(`/orders/${id}`);
+  return response.data.data;
+};
+
 export const updateOrderStatus = async (id: string, status: Order['status']): Promise<Order> => {
   const response = await api.put(`/orders/${id}/status`, { status });
   return response.data.data;
@@ -37,5 +42,24 @@ export const generateQuotation = async (id: string): Promise<any> => {
 
 export const confirmOrder = async (id: string): Promise<any> => {
   const response = await api.post(`/orders/${id}/confirm`);
+  return response.data.data;
+};
+
+export interface CreateOrderPayload {
+  event_date: string;
+  event_time: string;
+  event_type: string;
+  guest_count: number;
+  venue_address: string;
+  special_requests?: string;
+  order_items: {
+    menu_item_id: string;
+    quantity: number;
+    customizations?: Record<string, any>;
+  }[];
+}
+
+export const createOrder = async (data: CreateOrderPayload): Promise<Order> => {
+  const response = await api.post('/orders', data);
   return response.data.data;
 };

@@ -262,6 +262,12 @@ export default function MenuListingPage() {
                                         </td>
 
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <a 
+                                                href={`/dashboard/menu/${item.id}/recipe`}
+                                                className="text-amber-600 hover:text-amber-800 bg-transparent hover:bg-amber-50 px-2 py-1 rounded transition-colors mr-2 inline-block"
+                                            >
+                                                Recipe
+                                            </a>
                                             <button 
                                                 onClick={() => handleOpenModal(item)}
                                                 className="text-[#689F38] hover:text-[#558B2F] bg-transparent hover:bg-[#689F38]/10 px-2 py-1 rounded transition-colors mr-2"
@@ -303,7 +309,7 @@ export default function MenuListingPage() {
                             <form id="menu-form" onSubmit={handleSubmit} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">Item Name</label>
-                                    <input type="text" required value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. Mutton Biryani" />
+                                    <input type="text" required minLength={2} maxLength={255} value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. Mutton Biryani" />
                                 </div>
                                 
                                 <div>
@@ -318,7 +324,7 @@ export default function MenuListingPage() {
 
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">Description <span className="text-gray-400 font-normal text-xs">(optional)</span></label>
-                                    <textarea value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors h-20 resize-none text-sm text-gray-900 placeholder-gray-500 bg-white" placeholder="A brief description of the dish..." />
+                                    <textarea maxLength={500} value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors h-20 resize-none text-sm text-gray-900 placeholder-gray-500 bg-white" placeholder="A brief description of the dish..." />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
@@ -328,8 +334,8 @@ export default function MenuListingPage() {
                                             <option value="plate">Plate</option>
                                             <option value="kg">Kilogram (kg)</option>
                                             <option value="piece">Piece</option>
-                                            <option value="bowl">Bowl</option>
-                                            <option value="pax">Person (Pax)</option>
+                                            <option value="serving">Serving</option>
+                                            <option value="box">Box</option>
                                         </select>
                                     </div>
                                     <div>

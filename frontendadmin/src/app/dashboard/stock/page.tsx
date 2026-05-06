@@ -9,6 +9,7 @@ import {
     StockTransactionPayload,
     IngredientPayload
 } from "@/services/stock.service";
+import { getErrorMessage } from "@/utils/errorHandler";
 
 export default function StockManagementPage() {
     const [stocks, setStocks] = useState<StockLevel[]>([]);
@@ -93,9 +94,9 @@ export default function StockManagementPage() {
             closeModal();
             // Refresh data to get the newly calculated available/usable stock
             await fetchData();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err.response?.data?.message || "Failed to process stock transaction.");
+            setError(getErrorMessage(err, "Failed to process stock transaction."));
         } finally {
             setIsSubmitting(false);
         }
@@ -118,9 +119,9 @@ export default function StockManagementPage() {
                 shelf_life_days: 0
             });
             await fetchData();
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            setError(err.response?.data?.message || "Failed to create ingredient.");
+            setError(getErrorMessage(err, "Failed to create ingredient."));
         } finally {
             setIsSubmitting(false);
         }
@@ -333,6 +334,7 @@ export default function StockManagementPage() {
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1.5">Log Notes <span className="text-gray-400 font-normal text-xs">(optional)</span></label>
                                     <textarea 
+                                        maxLength={500}
                                         value={formData.notes || ""}
                                         onChange={e => setFormData({...formData, notes: e.target.value})}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors h-20 resize-none text-sm text-gray-900 placeholder-gray-500 bg-white"
@@ -391,7 +393,7 @@ export default function StockManagementPage() {
                             <form id="ingredient-form" onSubmit={handleIngredientSubmit} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">Ingredient Name</label>
-                                    <input type="text" required value={ingredientFormData.name} onChange={e => setIngredientFormData({...ingredientFormData, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. Basmati Rice" />
+                                    <input type="text" required minLength={2} maxLength={255} value={ingredientFormData.name} onChange={e => setIngredientFormData({...ingredientFormData, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. Basmati Rice" />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>

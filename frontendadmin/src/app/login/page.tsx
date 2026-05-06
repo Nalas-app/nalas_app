@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
 import { LoginPayload } from "@/types/auth.types";
 import theme from "@/utils/theme";
+import { getErrorMessage } from "@/utils/errorHandler";
 
 function LoginForm() {
     const {
@@ -34,6 +35,7 @@ function LoginForm() {
             const payload = response.data || response; // Fallback just in case
             
             const token = payload.token || payload.accessToken;
+            const refreshToken = payload.refreshToken;
             if (payload && token) {
                 // Ensure only admins can login to the admin UI
                 if (payload.user?.role !== "admin" && payload.user?.role !== "super_admin") {
@@ -43,15 +45,15 @@ function LoginForm() {
                 }
 
                 // Store token in Zustand and localStorage/cookie
-                setToken(token);
+                setToken(token, refreshToken);
                 
                 // Redirect to dashboard
                 router.push("/dashboard");
             } else {
                 setError("Invalid response from server. Missing token.");
             }
-        } catch (err: any) {
-            const errorMessage = err.response?.data?.message || "Login failed";
+        } catch (err: unknown) {
+            const errorMessage = getErrorMessage(err, "Login failed. Please check your credentials.");
             setError(errorMessage);
         } finally {
             setIsLoading(false);

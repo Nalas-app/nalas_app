@@ -89,6 +89,17 @@ export default function OrdersManagementPage() {
                     <h1 className="text-2xl font-extrabold text-gray-900">Event & Order Pipeline</h1>
                     <p className="text-gray-500 text-sm mt-1">Track financial velocity, upcoming events, and fulfillment status in real-time.</p>
                 </div>
+                <div>
+                    <a 
+                        href="/dashboard/orders/create"
+                        className="bg-[#689F38] hover:bg-[#558B2F] text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-sm flex items-center gap-2"
+                    >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        New Order
+                    </a>
+                </div>
             </div>
 
             {error && (
@@ -174,9 +185,15 @@ export default function OrdersManagementPage() {
                                         </td>
 
                                         <td className="px-6 py-5 whitespace-nowrap text-center">
-                                            <div className="text-sm font-extrabold text-[#689F38]">
-                                                ₹ {Number(order.total_amount || 0).toLocaleString()}
-                                            </div>
+                                            {order.status === 'draft' ? (
+                                                <div className="text-sm font-bold text-gray-400 italic">
+                                                    TBD (Mint Quote)
+                                                </div>
+                                            ) : (
+                                                <div className="text-sm font-extrabold text-[#689F38]">
+                                                    ₹ {Number(order.total_amount || 0).toLocaleString()}
+                                                </div>
+                                            )}
                                             {Number(order.advance_paid) > 0 && (
                                                 <div className="text-[11px] font-bold text-green-600 mt-1">
                                                     Paid: ₹ {Number(order.advance_paid).toLocaleString()}
@@ -191,42 +208,41 @@ export default function OrdersManagementPage() {
                                         </td>
 
                                         <td className="px-6 py-5 whitespace-nowrap text-right">
-                                            {/* Dynamic Action Buttons depending on status */}
-                                            {order.status === 'draft' && (
-                                                <button 
-                                                    onClick={() => handleAction(order.id, 'quote')}
-                                                    className="bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white border border-blue-200 px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-sm"
+                                            <div className="flex flex-col items-end gap-2">
+                                                <a 
+                                                    href={`/dashboard/orders/${order.id}`}
+                                                    className="bg-white border border-gray-200 text-gray-700 hover:text-blue-600 hover:border-blue-300 shadow-sm px-3 py-1.5 rounded-lg font-bold text-xs transition-all inline-block"
                                                 >
-                                                    MINT QUOTATION
-                                                </button>
-                                            )}
-                                            {order.status === 'quoted' && (
-                                                <button 
-                                                    onClick={() => handleAction(order.id, 'confirm')}
-                                                    className="bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white border border-purple-200 px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-sm"
-                                                >
-                                                    FINALIZE & LOCK
-                                                </button>
-                                            )}
-                                            {order.status === 'confirmed' && (
-                                                <button 
-                                                    onClick={() => updateOrderStatus(order.id, 'preparing').then(() => fetchOrders())}
-                                                    className="bg-orange-50 text-orange-700 hover:bg-orange-500 hover:text-white border border-orange-200 px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-sm"
-                                                >
-                                                    COMMENCE PREP
-                                                </button>
-                                            )}
-                                            {order.status === 'preparing' && (
-                                                <button 
-                                                    onClick={() => handleAction(order.id, 'complete')}
-                                                    className="bg-[#689F38]/10 text-[#558B2F] hover:bg-[#689F38] hover:text-white border border-[#689F38]/30 px-4 py-2 rounded-lg font-bold text-xs transition-all shadow-sm"
-                                                >
-                                                    MARK FULFILLED
-                                                </button>
-                                            )}
-                                            {['completed', 'cancelled'].includes(order.status) && (
-                                                <span className="text-xs font-bold text-gray-400 italic">No Actions Expected</span>
-                                            )}
+                                                    View Details
+                                                </a>
+                                                {order.status === 'quoted' && (
+                                                    <button 
+                                                        onClick={() => handleAction(order.id, 'confirm')}
+                                                        className="bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white border border-purple-200 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
+                                                    >
+                                                        FINALIZE & LOCK
+                                                    </button>
+                                                )}
+                                                {order.status === 'confirmed' && (
+                                                    <button 
+                                                        onClick={() => updateOrderStatus(order.id, 'preparing').then(() => fetchOrders())}
+                                                        className="bg-orange-50 text-orange-700 hover:bg-orange-500 hover:text-white border border-orange-200 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
+                                                    >
+                                                        COMMENCE PREP
+                                                    </button>
+                                                )}
+                                                {order.status === 'preparing' && (
+                                                    <button 
+                                                        onClick={() => handleAction(order.id, 'complete')}
+                                                        className="bg-[#689F38]/10 text-[#558B2F] hover:bg-[#689F38] hover:text-white border border-[#689F38]/30 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
+                                                    >
+                                                        MARK FULFILLED
+                                                    </button>
+                                                )}
+                                                {['completed', 'cancelled'].includes(order.status) && (
+                                                    <span className="text-xs font-bold text-gray-400 italic">No Quick Actions</span>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
