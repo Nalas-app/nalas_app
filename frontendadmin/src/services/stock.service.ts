@@ -55,3 +55,7 @@ export const updateIngredient = async (id: string, data: Partial<IngredientPaylo
   const response = await api.put(`/stock/ingredients/${id}`, data);
   return response.data.data;
 };
+
+export const deleteIngredient = async (id: string): Promise<void> => {
+  await api.delete(`/stock/ingredients/${id}`);
+};

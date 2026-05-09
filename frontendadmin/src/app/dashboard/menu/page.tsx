@@ -88,12 +88,26 @@ export default function MenuListingPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Frontend validation: description is mandatory
+        if (!formData.description || formData.description.trim().length === 0) {
+            alert("Description is required. Please provide a short description before saving.");
+            return;
+        }
+
         setIsSubmitting(true);
+        
+        const payload = {
+            ...formData,
+            name: formData.name?.trim(),
+            description: formData.description.trim()
+        };
+
         try {
             if (selectedItem) {
-                await updateMenuItem(selectedItem.id, formData);
+                await updateMenuItem(selectedItem.id, payload);
             } else {
-                await createMenuItem(formData);
+                await createMenuItem(payload);
             }
             setIsModalOpen(false);
             await fetchMenu();
@@ -308,8 +322,13 @@ export default function MenuListingPage() {
                         <div className="p-6 overflow-y-auto">
                             <form id="menu-form" onSubmit={handleSubmit} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Item Name</label>
-                                    <input type="text" required minLength={2} maxLength={255} value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. Mutton Biryani" />
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-sm font-bold text-gray-700">Item Name <span className="text-red-500">*</span></label>
+                                        <span className={`text-xs font-medium ${ (formData.name?.length || 0) >= 20 ? 'text-red-500' : 'text-gray-400' }`}>
+                                            {formData.name?.length || 0}/25
+                                        </span>
+                                    </div>
+                                    <input type="text" required minLength={2} maxLength={25} value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. Mutton Biryani" />
                                 </div>
                                 
                                 <div>
@@ -323,8 +342,20 @@ export default function MenuListingPage() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Description</label>
-                                    <textarea maxLength={500} value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors h-20 resize-none text-sm text-gray-900 placeholder-gray-500 bg-white" placeholder="A brief description of the dish..." />
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-sm font-bold text-gray-700">Description <span className="text-red-500">*</span></label>
+                                        <span className={`text-xs font-medium ${ (formData.description?.length || 0) >= 90 ? 'text-red-500' : (formData.description?.length || 0) >= 80 ? 'text-amber-500' : 'text-gray-400' }`}>
+                                            {formData.description?.length || 0}/100
+                                        </span>
+                                    </div>
+                                    <textarea
+                                        required
+                                        maxLength={100}
+                                        value={formData.description || ''}
+                                        onChange={e => setFormData({...formData, description: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors h-20 resize-none text-sm text-gray-900 placeholder-gray-500 bg-white"
+                                        placeholder="A brief description of the dish (required)..."
+                                    />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
