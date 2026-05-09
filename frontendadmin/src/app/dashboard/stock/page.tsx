@@ -5,6 +5,8 @@ import {
     getAllStockLevels, 
     recordTransaction, 
     createIngredient,
+    getIngredientById,
+    updateIngredient,
     StockLevel,
     StockTransactionPayload,
     IngredientPayload
@@ -33,6 +35,18 @@ export default function StockManagementPage() {
     // Add Ingredient State
     const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
     const [ingredientFormData, setIngredientFormData] = useState<IngredientPayload>({
+        name: "",
+        unit: "kg",
+        current_price_per_unit: 0,
+        reorder_level: 0,
+        is_perishable: false,
+        shelf_life_days: 0
+    });
+
+    // Edit Ingredient State
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingIngredientId, setEditingIngredientId] = useState<string | null>(null);
+    const [editIngredientFormData, setEditIngredientFormData] = useState<Partial<IngredientPayload>>({
         name: "",
         unit: "kg",
         current_price_per_unit: 0,
@@ -122,6 +136,48 @@ export default function StockManagementPage() {
         } catch (err: unknown) {
             console.error(err);
             setError(getErrorMessage(err, "Failed to create ingredient."));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const openEditModal = async (ingredientId: string) => {
+        setIsLoading(true);
+        try {
+            const ingredientDetails = await getIngredientById(ingredientId);
+            setEditIngredientFormData({
+                name: ingredientDetails.name,
+                unit: ingredientDetails.unit,
+                current_price_per_unit: Number(ingredientDetails.current_price_per_unit),
+                reorder_level: Number(ingredientDetails.reorder_level),
+                is_perishable: ingredientDetails.is_perishable,
+                shelf_life_days: ingredientDetails.shelf_life_days || 0
+            });
+            setEditingIngredientId(ingredientId);
+            setIsEditModalOpen(true);
+        } catch (err: unknown) {
+            console.error("Failed to load ingredient details for editing", err);
+            setError("Failed to load ingredient details.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleEditSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingIngredientId) return;
+        
+        setIsSubmitting(true);
+        setError("");
+
+        try {
+            await updateIngredient(editingIngredientId, editIngredientFormData);
+            setIsEditModalOpen(false);
+            setEditingIngredientId(null);
+            await fetchData();
+        } catch (err: unknown) {
+            console.error(err);
+            setError(getErrorMessage(err, "Failed to update ingredient."));
         } finally {
             setIsSubmitting(false);
         }
@@ -240,12 +296,23 @@ export default function StockManagementPage() {
                                         </td>
 
                                         <td className="px-6 py-4 whitespace-nowrap text-right">
-                                            <button 
-                                                onClick={() => openTransactionModal(stock)}
-                                                className="bg-white border border-gray-200 text-gray-700 hover:text-[#689F38] hover:border-[#689F38] shadow-sm px-4 py-2 rounded-lg font-bold text-sm transition-all"
-                                            >
-                                                Log Transaction
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button 
+                                                    onClick={() => openEditModal(stock.ingredient_id)}
+                                                    className="bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-[#689F38] border border-gray-200 shadow-sm p-2 rounded-lg transition-colors flex-shrink-0"
+                                                    title="Edit Ingredient"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                    </svg>
+                                                </button>
+                                                <button 
+                                                    onClick={() => openTransactionModal(stock)}
+                                                    className="bg-white border border-gray-200 text-gray-700 hover:text-[#689F38] hover:border-[#689F38] shadow-sm px-4 py-2 rounded-lg font-bold text-sm transition-all"
+                                                >
+                                                    Log Transaction
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -436,6 +503,75 @@ export default function StockManagementPage() {
                             <button onClick={() => setIsIngredientModalOpen(false)} type="button" className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 font-bold transition-colors">Cancel</button>
                             <button type="submit" form="ingredient-form" disabled={isSubmitting} className="px-6 py-2 bg-[#689F38] hover:bg-[#558B2F] text-white rounded-lg font-bold transition-colors shadow-md shadow-[#689F38]/20 flex items-center justify-center min-w-[120px]">
                                 {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Create"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- EDIT INGREDIENT MODAL --- */}
+            {isEditModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={() => setIsEditModalOpen(false)}></div>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg z-10 overflow-hidden flex flex-col transform transition-all max-h-[90vh]">
+                        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+                            <div>
+                                <h2 className="text-lg font-extrabold text-gray-900">Edit Ingredient</h2>
+                                <p className="text-sm text-gray-500 font-medium">Update properties for {editIngredientFormData.name}</p>
+                            </div>
+                            <button onClick={() => setIsEditModalOpen(false)} className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-full transition-colors">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto">
+                            <form id="edit-ingredient-form" onSubmit={handleEditSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Ingredient Name</label>
+                                    <input type="text" required minLength={2} maxLength={255} value={editIngredientFormData.name} onChange={e => setEditIngredientFormData({...editIngredientFormData, name: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] transition-colors text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. Basmati Rice" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Unit of Measurement</label>
+                                        <select required value={editIngredientFormData.unit} onChange={e => setEditIngredientFormData({...editIngredientFormData, unit: e.target.value})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white">
+                                            <option value="kg">Kilogram (kg)</option>
+                                            <option value="gram">Gram (g)</option>
+                                            <option value="liter">Liter (L)</option>
+                                            <option value="ml">Milliliter (ml)</option>
+                                            <option value="piece">Piece</option>
+                                            <option value="dozen">Dozen</option>
+                                            <option value="tsp">Teaspoon (tsp)</option>
+                                            <option value="tbsp">Tablespoon (tbsp)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Price per {editIngredientFormData.unit || 'Unit'} (₹)</label>
+                                        <input type="number" required min="0" step="0.01" value={editIngredientFormData.current_price_per_unit ?? ''} onChange={e => setEditIngredientFormData({...editIngredientFormData, current_price_per_unit: parseFloat(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Minimum Reorder Level</label>
+                                    <input type="number" required min="0" step="0.01" value={editIngredientFormData.reorder_level ?? ''} onChange={e => setEditIngredientFormData({...editIngredientFormData, reorder_level: parseFloat(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" placeholder="Alert when stock falls below..." />
+                                </div>
+                                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" checked={editIngredientFormData.is_perishable || false} onChange={e => setEditIngredientFormData({...editIngredientFormData, is_perishable: e.target.checked})} className="w-4 h-4 text-[#689F38] rounded border-gray-300 focus:ring-[#689F38]" />
+                                        <span className="text-sm font-bold text-gray-700">Is this ingredient perishable?</span>
+                                    </label>
+                                    {editIngredientFormData.is_perishable && (
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-700 mb-1">Shelf Life (Days)</label>
+                                            <input type="number" min="1" required={editIngredientFormData.is_perishable} value={editIngredientFormData.shelf_life_days ?? ''} onChange={e => setEditIngredientFormData({...editIngredientFormData, shelf_life_days: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. 3" />
+                                        </div>
+                                    )}
+                                </div>
+                            </form>
+                        </div>
+                        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3 flex-shrink-0">
+                            <button onClick={() => setIsEditModalOpen(false)} type="button" className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 font-bold transition-colors">Cancel</button>
+                            <button type="submit" form="edit-ingredient-form" disabled={isSubmitting} className="px-6 py-2 bg-[#689F38] hover:bg-[#558B2F] text-white rounded-lg font-bold transition-colors shadow-md shadow-[#689F38]/20 flex items-center justify-center min-w-[120px]">
+                                {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Save Changes"}
                             </button>
                         </div>
                     </div>

@@ -6,10 +6,16 @@ import {
     createMenuItem, 
     updateMenuItem, 
     deleteMenuItem,
+    getRecipe,
+    addRecipeIngredient,
+    removeRecipeIngredient,
+    RecipeIngredient,
+    RecipePayload,
     MenuItem,
     getCategories,
     MenuCategory
 } from "@/services/menu.service";
+import { getAllStockLevels, StockLevel } from "@/services/stock.service";
 
 export default function MenuItemsCRUDPage() {
     const [items, setItems] = useState<MenuItem[]>([]);
@@ -21,6 +27,18 @@ export default function MenuItemsCRUDPage() {
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+
+    // Recipe Modal State
+    const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
+    const [selectedRecipeItem, setSelectedRecipeItem] = useState<MenuItem | null>(null);
+    const [currentRecipe, setCurrentRecipe] = useState<RecipeIngredient[]>([]);
+    const [availableIngredients, setAvailableIngredients] = useState<StockLevel[]>([]);
+    const [recipeFormData, setRecipeFormData] = useState<RecipePayload>({
+        ingredient_id: "",
+        quantity_per_base_unit: 0,
+        wastage_factor: 1.05
+    });
+    const [isRecipeSubmitting, setIsRecipeSubmitting] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState<Partial<MenuItem>>({
@@ -37,12 +55,14 @@ export default function MenuItemsCRUDPage() {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [fetchedItems, fetchedCats] = await Promise.all([
+            const [fetchedItems, fetchedCats, fetchedStock] = await Promise.all([
                 getMenuItems(),
-                getCategories().catch(() => []) // Fallback if categories endpoint fails
+                getCategories().catch(() => []), // Fallback if categories endpoint fails
+                getAllStockLevels().catch(() => []) // Fallback
             ]);
             setItems(fetchedItems || []);
             setCategories(fetchedCats || []);
+            setAvailableIngredients(fetchedStock || []);
         } catch (err: any) {
             console.error("Failed to load items:", err);
             setError("Failed to fetch data from the server.");
@@ -79,6 +99,60 @@ export default function MenuItemsCRUDPage() {
     const closeModal = () => {
         setIsModalOpen(false);
         setEditingItem(null);
+    };
+
+    const openRecipeModal = async (item: MenuItem) => {
+        setSelectedRecipeItem(item);
+        setRecipeFormData({
+            ingredient_id: availableIngredients.length > 0 ? availableIngredients[0].ingredient_id : "",
+            quantity_per_base_unit: 0,
+            wastage_factor: 1.05
+        });
+        setIsRecipeModalOpen(true);
+        // Fetch recipe
+        try {
+            const recipe = await getRecipe(item.id);
+            setCurrentRecipe(recipe);
+        } catch (err) {
+            console.error("Failed to fetch recipe", err);
+            setCurrentRecipe([]);
+        }
+    };
+
+    const closeRecipeModal = () => {
+        setIsRecipeModalOpen(false);
+        setSelectedRecipeItem(null);
+    };
+
+    const handleAddRecipeIngredient = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedRecipeItem) return;
+        setIsRecipeSubmitting(true);
+        try {
+            await addRecipeIngredient(selectedRecipeItem.id, recipeFormData);
+            // Refresh recipe
+            const recipe = await getRecipe(selectedRecipeItem.id);
+            setCurrentRecipe(recipe);
+            setRecipeFormData({ ...recipeFormData, quantity_per_base_unit: 0 }); // reset qty
+        } catch (err: any) {
+            console.error(err);
+            alert(err.response?.data?.message || "Failed to add ingredient to recipe.");
+        } finally {
+            setIsRecipeSubmitting(false);
+        }
+    };
+
+    const handleRemoveRecipeIngredient = async (ingredientId: string) => {
+        if (!selectedRecipeItem) return;
+        if (!window.confirm("Remove this ingredient from the recipe?")) return;
+        try {
+            await removeRecipeIngredient(selectedRecipeItem.id, ingredientId);
+            const recipe = await getRecipe(selectedRecipeItem.id);
+            setCurrentRecipe(recipe);
+        } catch (err: any) {
+            console.error(err);
+            alert("Failed to remove ingredient.");
+        }
     };
 
     const handleDelete = async (id: string, name: string) => {
@@ -184,6 +258,12 @@ export default function MenuItemsCRUDPage() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <button 
+                                                onClick={() => openRecipeModal(item)}
+                                                className="text-amber-600 hover:text-amber-900 bg-amber-50 px-3 py-1.5 rounded-md transition-colors mr-2 font-bold"
+                                            >
+                                                Recipe
+                                            </button>
                                             <button 
                                                 onClick={() => openEditModal(item)}
                                                 className="text-blue-600 hover:text-blue-900 bg-blue-50 px-3 py-1.5 rounded-md transition-colors mr-2 font-bold"
@@ -339,6 +419,139 @@ export default function MenuItemsCRUDPage() {
                                     editingItem ? "Save Changes" : "Create Item"
                                 )}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- RECIPE MODAL --- */}
+            {isRecipeModalOpen && selectedRecipeItem && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div 
+                        className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity"
+                        onClick={closeRecipeModal}
+                    ></div>
+                    
+                    {/* Modal Content */}
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl z-10 overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-[#fdf8f4]">
+                            <div>
+                                <h2 className="text-xl font-extrabold text-gray-900">
+                                    Recipe Builder
+                                </h2>
+                                <p className="text-sm text-amber-700 font-medium">For {selectedRecipeItem.name} (per 1 {selectedRecipeItem.base_unit})</p>
+                            </div>
+                            <button onClick={closeRecipeModal} className="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto flex-1">
+                            <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">Current Ingredients</h3>
+                            
+                            {currentRecipe.length === 0 ? (
+                                <div className="bg-gray-50 border border-gray-100 rounded-lg p-6 text-center mb-6">
+                                    <p className="text-gray-500 font-medium">No ingredients added yet. This item will fallback to static pricing.</p>
+                                </div>
+                            ) : (
+                                <div className="border border-gray-200 rounded-lg overflow-hidden mb-6">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase">Ingredient</th>
+                                                <th className="px-4 py-2 text-center text-xs font-bold text-gray-500 uppercase">Qty Needed</th>
+                                                <th className="px-4 py-2 text-center text-xs font-bold text-gray-500 uppercase">Wastage</th>
+                                                <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-100">
+                                            {currentRecipe.map(ing => (
+                                                <tr key={ing.ingredient_id} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-2">
+                                                        <div className="text-sm font-bold text-gray-900">{ing.ingredient_name || ing.ingredient_id}</div>
+                                                    </td>
+                                                    <td className="px-4 py-2 text-center">
+                                                        <span className="text-sm font-medium bg-gray-100 px-2 py-0.5 rounded">{ing.quantity_per_base_unit} {ing.unit}</span>
+                                                    </td>
+                                                    <td className="px-4 py-2 text-center text-sm font-medium text-gray-600">
+                                                        {ing.wastage_factor}x
+                                                    </td>
+                                                    <td className="px-4 py-2 text-right">
+                                                        <button 
+                                                            onClick={() => handleRemoveRecipeIngredient(ing.ingredient_id)}
+                                                            className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded transition-colors"
+                                                            title="Remove from recipe"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            <h3 className="text-sm font-bold text-amber-700 uppercase tracking-wider mb-3">Add Ingredient</h3>
+                            <form id="recipe-form" onSubmit={handleAddRecipeIngredient} className="bg-amber-50/50 border border-amber-100 p-4 rounded-lg space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Select Inventory Asset</label>
+                                    <select 
+                                        required
+                                        value={recipeFormData.ingredient_id}
+                                        onChange={e => setRecipeFormData({...recipeFormData, ingredient_id: e.target.value})}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-white"
+                                    >
+                                        <option value="" disabled>-- Select an ingredient --</option>
+                                        {availableIngredients.map(inv => (
+                                            <option key={inv.ingredient_id} value={inv.ingredient_id}>
+                                                {inv.ingredient_name} ({inv.unit}) - {inv.available_quantity} available
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Quantity required (per {selectedRecipeItem.base_unit})</label>
+                                        <input 
+                                            type="number" 
+                                            required
+                                            min="0" step="0.001"
+                                            value={recipeFormData.quantity_per_base_unit || ''}
+                                            onChange={e => setRecipeFormData({...recipeFormData, quantity_per_base_unit: parseFloat(e.target.value) || 0})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-white"
+                                            placeholder="e.g. 0.25"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Wastage Factor</label>
+                                        <input 
+                                            type="number" 
+                                            required
+                                            min="1" step="0.01"
+                                            value={recipeFormData.wastage_factor || 1.0}
+                                            onChange={e => setRecipeFormData({...recipeFormData, wastage_factor: parseFloat(e.target.value) || 1.0})}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/50 bg-white"
+                                            placeholder="e.g. 1.05 for 5% waste"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex justify-end pt-2">
+                                    <button 
+                                        type="submit"
+                                        disabled={isRecipeSubmitting || !recipeFormData.ingredient_id}
+                                        className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-bold transition-colors shadow-md disabled:opacity-50 flex items-center"
+                                    >
+                                        {isRecipeSubmitting ? "Adding..." : "Add to Recipe"}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

@@ -45,3 +45,13 @@ export const createIngredient = async (data: IngredientPayload): Promise<any> =>
   const response = await api.post("/stock/ingredients", data);
   return response.data.data;
 };
+
+export const getIngredientById = async (id: string): Promise<any> => {
+  const response = await api.get(`/stock/ingredients/${id}`);
+  return response.data.data;
+};
+
+export const updateIngredient = async (id: string, data: Partial<IngredientPayload>): Promise<any> => {
+  const response = await api.put(`/stock/ingredients/${id}`, data);
+  return response.data.data;
+};

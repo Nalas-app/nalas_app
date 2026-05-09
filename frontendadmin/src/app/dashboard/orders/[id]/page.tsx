@@ -8,6 +8,7 @@ import {
     confirmOrder, 
     updateOrderStatus
 } from "@/services/orders.service";
+import { getQuotations } from "@/services/billing.service";
 import { getErrorMessage } from "@/utils/errorHandler";
 import Link from "next/link";
 
@@ -31,6 +32,14 @@ export default function OrderDetailsPage() {
         try {
             const data = await getOrderById(orderId);
             setOrder(data);
+            
+            // If order has a quotation, fetch it to show the breakdown persistently
+            if (data.status !== 'draft') {
+                const quotes = await getQuotations(orderId);
+                if (quotes && quotes.length > 0) {
+                    setQuotationDetails(quotes[0]); // Persist across refreshes
+                }
+            }
         } catch (err: any) {
             console.error(err);
             setError(getErrorMessage(err, "Failed to load order details."));
@@ -206,14 +215,32 @@ export default function OrderDetailsPage() {
                                 ML Quotation Minted
                             </h2>
                             <p className="text-blue-700/80 text-sm mt-1">
-                                {quotationDetails.is_ml_predicted 
-                                    ? `Cost predictions powered by Nalas ML Engine (Avg Confidence: ${quotationDetails.ml_confidence}%)`
-                                    : 'Cost predictions fell back to static recipe calculation.'}
+                                {quotationDetails.is_ml_predicted !== undefined 
+                                    ? (quotationDetails.is_ml_predicted 
+                                        ? `Cost predictions powered by Nalas ML Engine (Avg Confidence: ${quotationDetails.ml_confidence}%)`
+                                        : 'Cost predictions fell back to static recipe calculation.')
+                                    : 'Costing generated via dynamically mapped pricing intelligence.'}
                             </p>
                         </div>
                         <div className="text-right">
                             <p className="text-sm font-bold text-blue-800 uppercase tracking-widest">Grand Total</p>
-                            <p className="text-3xl font-black text-blue-900">₹{quotationDetails.quotation.grand_total.toLocaleString()}</p>
+                            <p className="text-3xl font-black text-blue-900">₹{Number(quotationDetails.quotation?.grand_total || quotationDetails.grand_total || 0).toLocaleString()}</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-blue-200/50">
+                        <div>
+                            <p className="text-xs font-bold text-blue-800/70 uppercase">Ingredient Cost</p>
+                            <p className="text-lg font-bold text-blue-900">₹{Number(quotationDetails.quotation?.ingredient_cost || quotationDetails.ingredient_cost || 0).toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold text-blue-800/70 uppercase">Labor Cost</p>
+                            <p className="text-lg font-bold text-blue-900">₹{Number(quotationDetails.quotation?.labor_cost || quotationDetails.labor_cost || 0).toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold text-blue-800/70 uppercase">Overheads & Tax</p>
+                            <p className="text-lg font-bold text-blue-900">
+                                ₹{(Number(quotationDetails.quotation?.overhead_cost || quotationDetails.overhead_cost || 0) + Number(quotationDetails.quotation?.tax_amount || quotationDetails.tax_amount || 0)).toLocaleString()}
+                            </p>
                         </div>
                     </div>
                 </div>

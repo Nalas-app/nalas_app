@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Nala's Admin",
-  description: "Admin panel for Nala's Restaurant",
+  title: "NRC Admin",
+  description: "Admin panel for Nalas’ Inn Ruchee Catering",
 };
 
 export default function RootLayout({

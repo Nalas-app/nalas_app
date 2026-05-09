@@ -264,7 +264,7 @@ export default function RecipeBuilderPage() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <span className="text-sm font-medium text-emerald-600">
-                                                    ₹{Number(ing.cost_contribution || 0).toFixed(2)}
+                                                    ₹{Number((ing as any).total_cost_with_wastage || ing.cost_contribution || 0).toFixed(2)}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -286,7 +286,7 @@ export default function RecipeBuilderPage() {
                                     <tr>
                                         <td colSpan={3} className="px-6 py-3 text-right font-bold text-gray-700">Estimated Base Cost:</td>
                                         <td className="px-6 py-3 text-right font-extrabold text-[#689F38]">
-                                            ₹{recipe.reduce((sum, item) => sum + Number(item.cost_contribution || 0), 0).toFixed(2)}
+                                            ₹{recipe.reduce((sum, item) => sum + Number((item as any).total_cost_with_wastage || item.cost_contribution || 0), 0).toFixed(2)}
                                         </td>
                                         <td></td>
                                     </tr>

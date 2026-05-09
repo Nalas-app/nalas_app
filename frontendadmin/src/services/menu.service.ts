@@ -60,6 +60,8 @@ export interface RecipeIngredient {
   quantity_per_base_unit: number;
   wastage_factor: number;
   cost_contribution?: number;
+  total_cost_with_wastage?: number;
+  cost_per_unit?: number;
 }
 
 export interface RecipePayload {
