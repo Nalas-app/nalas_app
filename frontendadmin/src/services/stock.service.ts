@@ -13,8 +13,8 @@ export interface StockLevel {
 export interface StockTransactionPayload {
   ingredient_id: string;
   transaction_type: 'purchase' | 'consumption' | 'wastage' | 'adjustment';
-  quantity: number;
-  unit_price?: number;
+  quantity: number | "";
+  unit_price?: number | "";
   notes?: string;
 }
 
@@ -35,10 +35,10 @@ export const recordTransaction = async (data: StockTransactionPayload): Promise<
 export interface IngredientPayload {
   name: string;
   unit: string;
-  current_price_per_unit: number;
-  reorder_level: number;
+  current_price_per_unit: number | "";
+  reorder_level: number | "";
   is_perishable: boolean;
-  shelf_life_days?: number;
+  shelf_life_days?: number | "";
 }
 
 export const createIngredient = async (data: IngredientPayload): Promise<any> => {

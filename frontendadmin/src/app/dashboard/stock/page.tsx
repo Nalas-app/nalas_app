@@ -29,7 +29,7 @@ export default function StockManagementPage() {
     const [formData, setFormData] = useState<StockTransactionPayload>({
         ingredient_id: "",
         transaction_type: "purchase",
-        quantity: 0,
+        quantity: "",
         notes: ""
     });
 
@@ -38,10 +38,10 @@ export default function StockManagementPage() {
     const [ingredientFormData, setIngredientFormData] = useState<IngredientPayload>({
         name: "",
         unit: "kg",
-        current_price_per_unit: 0,
-        reorder_level: 0,
+        current_price_per_unit: "",
+        reorder_level: "",
         is_perishable: false,
-        shelf_life_days: 0
+        shelf_life_days: ""
     });
 
     // Edit Ingredient State
@@ -50,10 +50,10 @@ export default function StockManagementPage() {
     const [editIngredientFormData, setEditIngredientFormData] = useState<Partial<IngredientPayload>>({
         name: "",
         unit: "kg",
-        current_price_per_unit: 0,
-        reorder_level: 0,
+        current_price_per_unit: "",
+        reorder_level: "",
         is_perishable: false,
-        shelf_life_days: 0
+        shelf_life_days: ""
     });
 
     const fetchData = async () => {
@@ -82,7 +82,7 @@ export default function StockManagementPage() {
         setFormData({
             ingredient_id: stock.ingredient_id,
             transaction_type: "purchase",
-            quantity: 0,
+            quantity: "",
             notes: ""
         });
         setIsModalOpen(true);
@@ -96,8 +96,21 @@ export default function StockManagementPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        if (formData.quantity <= 0) {
-            alert("Quantity must be greater than zero.");
+        if (formData.quantity === "" || isNaN(Number(formData.quantity))) {
+            alert("Please enter a valid quantity.");
+            return;
+        }
+
+        // Only require > 0 for purchase, consumption, and wastage. 
+        // Adjustment allows 0 to reset stock.
+        const qty = Number(formData.quantity);
+        if (formData.transaction_type !== 'adjustment' && qty <= 0) {
+            alert(`Quantity for ${formData.transaction_type} must be greater than zero.`);
+            return;
+        }
+
+        if (formData.transaction_type === 'adjustment' && qty < 0) {
+            alert("Adjustment quantity cannot be negative.");
             return;
         }
 
@@ -105,7 +118,7 @@ export default function StockManagementPage() {
         setError("");
 
         try {
-            await recordTransaction(formData);
+            await recordTransaction({...formData, quantity: qty});
             closeModal();
             // Refresh data to get the newly calculated available/usable stock
             await fetchData();
@@ -119,6 +132,12 @@ export default function StockManagementPage() {
 
     const handleIngredientSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (ingredientFormData.current_price_per_unit === "" || ingredientFormData.reorder_level === "") {
+            alert("Please fill in all required numeric fields.");
+            return;
+        }
+
         setIsSubmitting(true);
         setError("");
 
@@ -128,10 +147,10 @@ export default function StockManagementPage() {
             setIngredientFormData({
                 name: "",
                 unit: "kg",
-                current_price_per_unit: 0,
-                reorder_level: 0,
+                current_price_per_unit: "",
+                reorder_level: "",
                 is_perishable: false,
-                shelf_life_days: 0
+                shelf_life_days: ""
             });
             await fetchData();
         } catch (err: unknown) {
@@ -167,6 +186,11 @@ export default function StockManagementPage() {
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!editingIngredientId) return;
+
+        if (editIngredientFormData.current_price_per_unit === "" || editIngredientFormData.reorder_level === "") {
+            alert("Please fill in all required numeric fields.");
+            return;
+        }
         
         setIsSubmitting(true);
         setError("");
@@ -400,16 +424,27 @@ export default function StockManagementPage() {
                                 </div>
                                 
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1.5">
-                                        Quantity <span className="text-gray-400 font-normal">({selectedStock.unit})</span>
-                                    </label>
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <label className="block text-sm font-bold text-gray-700">
+                                            Quantity <span className="text-gray-400 font-normal">({selectedStock.unit})</span>
+                                        </label>
+                                        <div className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                                            New Balance: {
+                                                formData.transaction_type === 'adjustment' 
+                                                ? (formData.quantity || 0)
+                                                : formData.transaction_type === 'purchase'
+                                                ? (selectedStock.available_quantity + (formData.quantity || 0))
+                                                : (selectedStock.available_quantity - (formData.quantity || 0))
+                                            } {selectedStock.unit}
+                                        </div>
+                                    </div>
                                     <div className="relative">
                                         <input 
                                             type="number" 
                                             required
                                             min="0" step="0.01"
-                                            value={formData.quantity || ''}
-                                            onChange={e => setFormData({...formData, quantity: parseFloat(e.target.value) || 0})}
+                                            value={formData.quantity}
+                                            onChange={e => setFormData({...formData, quantity: e.target.value === "" ? "" : parseFloat(e.target.value)})}
                                             className="w-full pl-4 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-lg font-bold transition-all shadow-inner text-gray-900 placeholder-gray-500 bg-white"
                                             placeholder="0.00"
                                         />
@@ -417,6 +452,11 @@ export default function StockManagementPage() {
                                             <span className="text-gray-500 font-medium font-mono">{selectedStock.unit}</span>
                                         </div>
                                     </div>
+                                    {formData.transaction_type === 'adjustment' && (
+                                        <p className="text-[10px] text-amber-600 mt-1 font-medium italic">
+                                            Note: This will override the current stock of {selectedStock.available_quantity} {selectedStock.unit}.
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div>
@@ -499,12 +539,12 @@ export default function StockManagementPage() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Price per {ingredientFormData.unit || 'Unit'} (₹)</label>
-                                        <input type="number" required min="0" step="0.01" value={ingredientFormData.current_price_per_unit || ''} onChange={e => setIngredientFormData({...ingredientFormData, current_price_per_unit: parseFloat(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" />
+                                        <input type="number" required min="0" step="0.01" value={ingredientFormData.current_price_per_unit} onChange={e => setIngredientFormData({...ingredientFormData, current_price_per_unit: e.target.value === "" ? "" : parseFloat(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" />
                                     </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">Minimum Reorder Level</label>
-                                    <input type="number" required min="0" step="0.01" value={ingredientFormData.reorder_level || ''} onChange={e => setIngredientFormData({...ingredientFormData, reorder_level: parseFloat(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" placeholder="Alert when stock falls below..." />
+                                    <input type="number" required min="0" step="0.01" value={ingredientFormData.reorder_level} onChange={e => setIngredientFormData({...ingredientFormData, reorder_level: e.target.value === "" ? "" : parseFloat(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" placeholder="Alert when stock falls below..." />
                                 </div>
                                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
                                     <label className="flex items-center gap-2 cursor-pointer">
@@ -514,7 +554,7 @@ export default function StockManagementPage() {
                                     {ingredientFormData.is_perishable && (
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-1">Shelf Life (Days)</label>
-                                            <input type="number" min="1" required={ingredientFormData.is_perishable} value={ingredientFormData.shelf_life_days || ''} onChange={e => setIngredientFormData({...ingredientFormData, shelf_life_days: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. 3" />
+                                            <input type="number" min="1" required={ingredientFormData.is_perishable} value={ingredientFormData.shelf_life_days} onChange={e => setIngredientFormData({...ingredientFormData, shelf_life_days: e.target.value === "" ? "" : parseInt(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. 3" />
                                         </div>
                                     )}
                                 </div>
@@ -568,12 +608,12 @@ export default function StockManagementPage() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Price per {editIngredientFormData.unit || 'Unit'} (₹)</label>
-                                        <input type="number" required min="0" step="0.01" value={editIngredientFormData.current_price_per_unit ?? ''} onChange={e => setEditIngredientFormData({...editIngredientFormData, current_price_per_unit: parseFloat(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" />
+                                        <input type="number" required min="0" step="0.01" value={editIngredientFormData.current_price_per_unit} onChange={e => setEditIngredientFormData({...editIngredientFormData, current_price_per_unit: e.target.value === "" ? "" : parseFloat(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" />
                                     </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">Minimum Reorder Level</label>
-                                    <input type="number" required min="0" step="0.01" value={editIngredientFormData.reorder_level ?? ''} onChange={e => setEditIngredientFormData({...editIngredientFormData, reorder_level: parseFloat(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" placeholder="Alert when stock falls below..." />
+                                    <input type="number" required min="0" step="0.01" value={editIngredientFormData.reorder_level} onChange={e => setEditIngredientFormData({...editIngredientFormData, reorder_level: e.target.value === "" ? "" : parseFloat(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" placeholder="Alert when stock falls below..." />
                                 </div>
                                 <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg space-y-3">
                                     <label className="flex items-center gap-2 cursor-pointer">
@@ -583,7 +623,7 @@ export default function StockManagementPage() {
                                     {editIngredientFormData.is_perishable && (
                                         <div>
                                             <label className="block text-sm font-bold text-gray-700 mb-1">Shelf Life (Days)</label>
-                                            <input type="number" min="1" required={editIngredientFormData.is_perishable} value={editIngredientFormData.shelf_life_days ?? ''} onChange={e => setEditIngredientFormData({...editIngredientFormData, shelf_life_days: parseInt(e.target.value) || 0})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. 3" />
+                                            <input type="number" min="1" required={editIngredientFormData.is_perishable} value={editIngredientFormData.shelf_life_days} onChange={e => setEditIngredientFormData({...editIngredientFormData, shelf_life_days: e.target.value === "" ? "" : parseInt(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" placeholder="e.g. 3" />
                                         </div>
                                     )}
                                 </div>

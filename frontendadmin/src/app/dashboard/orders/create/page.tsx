@@ -63,6 +63,13 @@ export default function CreateOrderPage() {
         const menuItem = menuItems.find(i => i.id === selectedMenuId);
         if (!menuItem) return;
 
+        // NEW: Validate against minimum quantity
+        const minQty = Number(menuItem.min_quantity) || 0;
+        if (Number(selectedQuantity) < minQty) {
+            alert(`Cannot add ${menuItem.name}. The minimum order quantity is ${minQty} ${menuItem.base_unit}(s).`);
+            return;
+        }
+
         // Check if item already exists
         const existingIndex = orderItems.findIndex(i => i.menu_item_id === selectedMenuId);
         if (existingIndex >= 0) {
@@ -244,9 +251,14 @@ export default function CreateOrderPage() {
                                 <select 
                                     value={selectedMenuId} 
                                     onChange={(e) => {
-                                        setSelectedMenuId(e.target.value);
-                                        if (e.target.value) {
-                                            setSelectedQuantity(formData.guest_count || "");
+                                        const mid = e.target.value;
+                                        setSelectedMenuId(mid);
+                                        const item = menuItems.find(i => i.id === mid);
+                                        if (item) {
+                                            // Default to max of guest count or min_quantity
+                                            const min = Number(item.min_quantity) || 1;
+                                            const def = Math.max(formData.guest_count || 0, min);
+                                            setSelectedQuantity(def);
                                         }
                                     }}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 text-sm text-gray-900 bg-white"
@@ -258,20 +270,31 @@ export default function CreateOrderPage() {
                                 </select>
                             </div>
                             <div className="col-span-3">
-                                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wider">Qty</label>
+                                <div className="flex justify-between items-center mb-1">
+                                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">Qty</label>
+                                    {selectedMenuId && (
+                                        <span className="text-[10px] font-bold text-[#689F38]">
+                                            Min: {menuItems.find(i => i.id === selectedMenuId)?.min_quantity}
+                                        </span>
+                                    )}
+                                </div>
                                 <input 
                                     type="number" 
                                     min="0.5" step="0.5"
                                     value={selectedQuantity} 
                                     onChange={(e) => setSelectedQuantity(e.target.value ? parseFloat(e.target.value) : "")}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 text-sm text-gray-900 bg-white"
+                                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 text-sm text-gray-900 bg-white ${
+                                        selectedMenuId && Number(selectedQuantity) < Number(menuItems.find(i => i.id === selectedMenuId)?.min_quantity || 0) 
+                                        ? 'border-red-300 ring-1 ring-red-100' 
+                                        : 'border-gray-300'
+                                    }`}
                                 />
                             </div>
                             <div className="col-span-2">
                                 <button 
                                     type="button"
                                     onClick={handleAddItem}
-                                    disabled={!selectedMenuId || selectedQuantity === ""}
+                                    disabled={!selectedMenuId || selectedQuantity === "" || (selectedMenuId && Number(selectedQuantity) < Number(menuItems.find(i => i.id === selectedMenuId)?.min_quantity || 0))}
                                     className="w-full h-[38px] bg-[#689F38] hover:bg-[#558B2F] disabled:bg-gray-300 text-white rounded-lg font-bold transition-colors shadow-sm flex items-center justify-center"
                                 >
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -280,6 +303,9 @@ export default function CreateOrderPage() {
                                 </button>
                             </div>
                         </div>
+                        {selectedMenuId && Number(selectedQuantity) < Number(menuItems.find(i => i.id === selectedMenuId)?.min_quantity || 0) && (
+                            <p className="text-[10px] text-red-500 mt-1 font-bold italic">⚠ Quantity is below the minimum required for this dish.</p>
+                        )}
                     </div>
 
                     <div className="mt-4">

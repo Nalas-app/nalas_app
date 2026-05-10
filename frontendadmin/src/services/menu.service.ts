@@ -14,8 +14,8 @@ export interface MenuItem {
   name: string;
   description: string;
   base_unit: string;
-  min_quantity: string | number;
-  base_price: number;
+  min_quantity: number | "";
+  base_price: number | "";
   image_url: string | null;
   is_customizable: boolean;
   is_active: boolean;

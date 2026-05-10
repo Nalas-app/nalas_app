@@ -19,7 +19,7 @@ export default function MenuListingPage() {
         name: "",
         description: "",
         base_unit: "plate",
-        min_quantity: 1,
+        min_quantity: "",
         image_url: "",
         category_id: "",
         is_customizable: false,
@@ -71,7 +71,7 @@ export default function MenuListingPage() {
                 name: "",
                 description: "",
                 base_unit: "plate",
-                min_quantity: 1,
+                min_quantity: "",
                 image_url: "",
                 category_id: categories.length > 0 ? categories[0].id : "",
                 is_customizable: false,
@@ -92,6 +92,11 @@ export default function MenuListingPage() {
         // Frontend validation: description is mandatory
         if (!formData.description || formData.description.trim().length === 0) {
             alert("Description is required. Please provide a short description before saving.");
+            return;
+        }
+
+        if (formData.min_quantity === "" || isNaN(Number(formData.min_quantity))) {
+            alert("Please enter a valid Minimum Quantity.");
             return;
         }
 
@@ -371,7 +376,7 @@ export default function MenuListingPage() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-1">Min Quantity</label>
-                                        <input type="number" required min="1" step="0.5" value={formData.min_quantity || ''} onChange={e => setFormData({...formData, min_quantity: parseFloat(e.target.value) || 1})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" />
+                                        <input type="number" required min="1" step="0.5" value={formData.min_quantity} onChange={e => setFormData({...formData, min_quantity: e.target.value === "" ? "" : parseFloat(e.target.value)})} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 focus:border-[#689F38] text-gray-900 placeholder-gray-500 bg-white" />
                                     </div>
                                 </div>
 
