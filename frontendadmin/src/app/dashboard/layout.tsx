@@ -101,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Text — hidden when collapsed */}
           {sidebarOpen && (
             <div className="overflow-hidden whitespace-nowrap">
-              <p className="text-white font-bold text-sm leading-none">Nala&apos;s</p>
+              <p className="text-white font-bold text-sm leading-none">Nalas&apos; Inn Ruchee Catering</p>
               <p className="text-xs mt-0.5" style={{ color: theme.primarySoft }}>Admin Panel</p>
             </div>
           )}
