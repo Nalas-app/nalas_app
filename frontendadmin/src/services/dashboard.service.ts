@@ -1,8 +1,10 @@
 import api from "./axios";
 
 export interface DashboardSummary {
+  totalOrders: number;
   activeOrders: number;
   totalRevenue: number;
+  advanceCollected: number;
   todaysOrders: number;
 }
 
@@ -15,19 +17,24 @@ export interface ProcurementAlert {
   deficit: number;
 }
 
-export const getDashboardSummary = async (): Promise<DashboardSummary> => {
+export const getDashboardSummary = async (fromDate?: string, toDate?: string): Promise<DashboardSummary> => {
   try {
-    const response = await api.get("/orders");
+    const queryParams = new URLSearchParams({ limit: '100' });
+    if (fromDate) queryParams.append('from_date', fromDate);
+    if (toDate) queryParams.append('to_date', toDate);
+
+    const response = await api.get(`/orders?${queryParams.toString()}`);
     const orders = response.data.data || [];
     
     const todayStr = new Date().toISOString().split('T')[0];
     
-    // Active orders are quoted, confirmed, or preparing
     const activeOrders = orders.filter((o: any) => ['quoted', 'confirmed', 'preparing'].includes(o.status)).length;
     
     // Total revenue from all orders (can refine later if only confirmed/completed should count)
     const totalRevenue = orders.reduce((sum: number, o: any) => sum + (Number(o.total_amount) || 0), 0);
     
+    const advanceCollected = orders.reduce((sum: number, o: any) => sum + (Number(o.advance_paid) || 0), 0);
+
     // Today's events based on event_date
     const todaysOrders = orders.filter((o: any) => {
         if (!o.event_date) return false;
@@ -36,15 +43,19 @@ export const getDashboardSummary = async (): Promise<DashboardSummary> => {
     }).length;
     
     return {
+      totalOrders: orders.length,
       activeOrders,
       totalRevenue,
+      advanceCollected,
       todaysOrders
     };
   } catch (error) {
     console.error("Error calculating dashboard summary:", error);
     return {
+      totalOrders: 0,
       activeOrders: 0,
       totalRevenue: 0,
+      advanceCollected: 0,
       todaysOrders: 0
     };
   }

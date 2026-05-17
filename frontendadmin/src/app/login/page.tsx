@@ -101,7 +101,7 @@ function LoginForm() {
                                 <input
                                     id="email"
                                     type="email"
-                                    placeholder="admin@nalas.com"
+                                    placeholder="admin@magilamfoods.com"
                                     className="w-full px-4 py-3 rounded-lg  text-sm placeholder-gray-500 focus:outline-none transition-all text-gray-900 bg-white"
                                     style={{
                                         background: "rgba(255,255,255,0.08)",

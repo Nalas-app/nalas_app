@@ -9,13 +9,20 @@ export default function DashboardOverviewPage() {
     const [alerts, setAlerts] = useState<ProcurementAlert[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
+    const [fromDate, setFromDate] = useState<string>("");
+    const [toDate, setToDate] = useState<string>("");
 
     useEffect(() => {
         const fetchDashboardData = async () => {
+            setIsLoading(true);
             try {
+                // Only apply date filters if BOTH dates are selected
+                const validFrom = (fromDate && toDate) ? fromDate : undefined;
+                const validTo = (fromDate && toDate) ? toDate : undefined;
+
                 // Run queries concurrently
                 const [summaryData, alertsData] = await Promise.all([
-                    getDashboardSummary(),
+                    getDashboardSummary(validFrom, validTo),
                     getProcurementAlerts(),
                 ]);
                 
@@ -30,7 +37,7 @@ export default function DashboardOverviewPage() {
         };
 
         fetchDashboardData();
-    }, []);
+    }, [fromDate, toDate]);
 
     if (isLoading) {
         return (
@@ -64,6 +71,47 @@ export default function DashboardOverviewPage() {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-2xl font-extrabold text-gray-900">Dashboard Overview</h1>
+                    <p className="text-gray-500 text-sm mt-1">High-level insights into financial velocity and procurement needs.</p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                        <div className="flex flex-col">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase">From Date</label>
+                            <input 
+                                type="date" 
+                                value={fromDate} 
+                                onChange={(e) => setFromDate(e.target.value)}
+                                className="text-sm font-bold text-gray-700 outline-none bg-transparent cursor-pointer"
+                            />
+                        </div>
+                        <div className="w-px h-6 bg-gray-200 mx-1"></div>
+                        <div className="flex flex-col">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase">To Date</label>
+                            <input 
+                                type="date" 
+                                value={toDate} 
+                                onChange={(e) => setToDate(e.target.value)}
+                                className="text-sm font-bold text-gray-700 outline-none bg-transparent cursor-pointer"
+                            />
+                        </div>
+                        {(fromDate || toDate) && (
+                            <button 
+                                onClick={() => { setFromDate(""); setToDate(""); }}
+                                className="ml-2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                title="Clear Dates"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             {/* KPI Section */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
@@ -72,7 +120,7 @@ export default function DashboardOverviewPage() {
                     <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-emerald-500/10 transition-transform group-hover:scale-110"></div>
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Total Revenue</p>
+                            <p className="text-sm font-medium text-gray-500 mb-1">Pipeline Value</p>
                             <h3 className="text-3xl font-extrabold text-gray-900">
                                 ₹{(summary?.totalRevenue || 0).toLocaleString()}
                             </h3>
@@ -85,39 +133,38 @@ export default function DashboardOverviewPage() {
                     </div>
                 </div>
 
-                {/* Active Orders Card */}
+                {/* Advance Collected Card */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
-                    <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-blue-500/10 transition-transform group-hover:scale-110"></div>
+                    <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-purple-500/10 transition-transform group-hover:scale-110"></div>
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Active Pipeline</p>
+                            <p className="text-sm font-medium text-gray-500 mb-1">Advance Collected</p>
                             <h3 className="text-3xl font-extrabold text-gray-900">
-                                {summary?.activeOrders || 0}
+                                ₹{(summary?.advanceCollected || 0).toLocaleString()}
                             </h3>
-                            <p className="text-xs text-blue-600 mt-2 font-medium">Orders Quoted/Confirmed</p>
                         </div>
-                        <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center p-3 shadow-inner">
+                        <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center p-3 shadow-inner">
                             <svg className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
                             </svg>
                         </div>
                     </div>
                 </div>
 
-                {/* Today's Events Card */}
+                {/* Total Orders Card */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
-                    <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-orange-500/10 transition-transform group-hover:scale-110"></div>
+                    <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-blue-500/10 transition-transform group-hover:scale-110"></div>
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Events Today</p>
+                            <p className="text-sm font-medium text-gray-500 mb-1">Total Orders</p>
                             <h3 className="text-3xl font-extrabold text-gray-900">
-                                {summary?.todaysOrders || 0}
+                                {summary?.totalOrders || 0}
                             </h3>
-                            <p className="text-xs text-orange-600 mt-2 font-medium">Scheduled for delivery</p>
+                            <p className="text-xs text-blue-600 mt-2 font-medium">{summary?.activeOrders || 0} currently active</p>
                         </div>
-                        <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center p-3 shadow-inner">
+                        <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center p-3 shadow-inner">
                             <svg className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                             </svg>
                         </div>
                     </div>

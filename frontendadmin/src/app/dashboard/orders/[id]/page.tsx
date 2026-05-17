@@ -230,16 +230,36 @@ export default function OrderDetailsPage() {
                     <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-blue-200/50">
                         <div>
                             <p className="text-xs font-bold text-blue-800/70 uppercase">Ingredient Cost</p>
-                            <p className="text-lg font-bold text-blue-900">₹{Number(quotationDetails.quotation?.ingredient_cost || quotationDetails.ingredient_cost || 0).toLocaleString()}</p>
+                            <p className="text-lg font-bold text-blue-900">
+                                ₹{(() => {
+                                    const q = quotationDetails.quotation || quotationDetails;
+                                    const breakdown = q.breakdown || q;
+                                    // If ingredient_cost is missing, calculate it from subtotal - labor_cost
+                                    const cost = breakdown.ingredient_cost || (Number(breakdown.subtotal || 0) - Number(breakdown.labor_cost || 0));
+                                    return Number(cost || 0).toLocaleString();
+                                })()}
+                            </p>
                         </div>
                         <div>
                             <p className="text-xs font-bold text-blue-800/70 uppercase">Labor Cost</p>
-                            <p className="text-lg font-bold text-blue-900">₹{Number(quotationDetails.quotation?.labor_cost || quotationDetails.labor_cost || 0).toLocaleString()}</p>
+                            <p className="text-lg font-bold text-blue-900">
+                                ₹{(() => {
+                                    const q = quotationDetails.quotation || quotationDetails;
+                                    const breakdown = q.breakdown || q;
+                                    return Number(breakdown.labor_cost || 0).toLocaleString();
+                                })()}
+                            </p>
                         </div>
                         <div>
                             <p className="text-xs font-bold text-blue-800/70 uppercase">Overheads & Tax</p>
                             <p className="text-lg font-bold text-blue-900">
-                                ₹{(Number(quotationDetails.quotation?.overhead_cost || quotationDetails.overhead_cost || 0) + Number(quotationDetails.quotation?.tax_amount || quotationDetails.tax_amount || 0)).toLocaleString()}
+                                ₹{(() => {
+                                    const q = quotationDetails.quotation || quotationDetails;
+                                    const breakdown = q.breakdown || q;
+                                    const overhead = Number(breakdown.overhead_cost || 0);
+                                    const tax = Number(breakdown.tax_amount || 0);
+                                    return (overhead + tax).toLocaleString();
+                                })()}
                             </p>
                         </div>
                     </div>

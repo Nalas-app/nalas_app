@@ -14,11 +14,20 @@ export default function OrdersManagementPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState("");
     const [activeTab, setActiveTab] = useState<string>("all"); // 'all', 'active', 'completed'
+    const [fromDate, setFromDate] = useState<string>("");
+    const [toDate, setToDate] = useState<string>("");
 
     const fetchOrders = async () => {
         setIsLoading(true);
         try {
-            const fetchedOrders = await getOrders();
+            const filters: any = {};
+            // Only apply filters if BOTH dates are selected
+            if (fromDate && toDate) {
+                filters.from_date = fromDate;
+                filters.to_date = toDate;
+            }
+            
+            const fetchedOrders = await getOrders(1, 50, filters);
             setOrders(fetchedOrders || []);
         } catch (err: any) {
             console.error("Failed to load orders:", err);
@@ -30,7 +39,7 @@ export default function OrdersManagementPage() {
 
     useEffect(() => {
         fetchOrders();
-    }, []);
+    }, [fromDate, toDate]);
 
     const filteredOrders = orders.filter(order => {
         if (activeTab === 'all') return true;
@@ -84,21 +93,90 @@ export default function OrdersManagementPage() {
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 relative">
             
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-extrabold text-gray-900">Event & Order Pipeline</h1>
                     <p className="text-gray-500 text-sm mt-1">Track financial velocity, upcoming events, and fulfillment status in real-time.</p>
                 </div>
-                <div>
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                        <div className="flex flex-col">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase">From Date</label>
+                            <input 
+                                type="date" 
+                                value={fromDate} 
+                                onChange={(e) => setFromDate(e.target.value)}
+                                className="text-sm font-bold text-gray-700 outline-none bg-transparent cursor-pointer"
+                            />
+                        </div>
+                        <div className="w-px h-6 bg-gray-200 mx-1"></div>
+                        <div className="flex flex-col">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase">To Date</label>
+                            <input 
+                                type="date" 
+                                value={toDate} 
+                                onChange={(e) => setToDate(e.target.value)}
+                                className="text-sm font-bold text-gray-700 outline-none bg-transparent cursor-pointer"
+                            />
+                        </div>
+                        {(fromDate || toDate) && (
+                            <button 
+                                onClick={() => { setFromDate(""); setToDate(""); }}
+                                className="ml-2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                title="Clear Dates"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
                     <a 
                         href="/dashboard/orders/create"
-                        className="bg-[#689F38] hover:bg-[#558B2F] text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-sm flex items-center gap-2"
+                        className="bg-[#689F38] hover:bg-[#558B2F] text-white px-4 py-2.5 rounded-lg font-bold transition-colors shadow-sm flex items-center gap-2 flex-shrink-0"
                     >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
                         New Order
                     </a>
+                </div>
+            </div>
+
+            {/* Order Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 transition-transform hover:scale-[1.01]">
+                    <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-gray-500 uppercase">Total Orders</p>
+                        <h3 className="text-2xl font-black text-gray-900">{filteredOrders.length}</h3>
+                    </div>
+                </div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 transition-transform hover:scale-[1.01]">
+                    <div className="w-12 h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-gray-500 uppercase">Pipeline Value</p>
+                        <h3 className="text-2xl font-black text-gray-900">₹ {filteredOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0).toLocaleString()}</h3>
+                    </div>
+                </div>
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 transition-transform hover:scale-[1.01]">
+                    <div className="w-12 h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-gray-500 uppercase">Advance Collected</p>
+                        <h3 className="text-2xl font-black text-gray-900">₹ {filteredOrders.reduce((sum, order) => sum + Number(order.advance_paid || 0), 0).toLocaleString()}</h3>
+                    </div>
                 </div>
             </div>
 

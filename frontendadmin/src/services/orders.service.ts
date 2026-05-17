@@ -20,6 +20,8 @@ export const getOrders = async (page = 1, limit = 50, filters?: any): Promise<Or
   const queryParams = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
   
   if (filters?.status) queryParams.append('status', filters.status);
+  if (filters?.from_date) queryParams.append('from_date', filters.from_date);
+  if (filters?.to_date) queryParams.append('to_date', filters.to_date);
   
   const response = await api.get(`/orders?${queryParams.toString()}`);
   return response.data.data;
