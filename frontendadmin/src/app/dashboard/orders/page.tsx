@@ -8,6 +8,7 @@ import {
     confirmOrder,
     Order
 } from "@/services/orders.service";
+import { recordPayment, getInvoices } from "@/services/billing.service";
 
 export default function OrdersManagementPage() {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -16,6 +17,14 @@ export default function OrdersManagementPage() {
     const [activeTab, setActiveTab] = useState<string>("all"); // 'all', 'active', 'completed'
     const [fromDate, setFromDate] = useState<string>("");
     const [toDate, setToDate] = useState<string>("");
+
+    // Payment Modal State
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [selectedOrderForPayment, setSelectedOrderForPayment] = useState<Order | null>(null);
+    const [paymentAmount, setPaymentAmount] = useState<number>(0);
+    const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
+    const [transactionId, setTransactionId] = useState("");
+    const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
     const fetchOrders = async () => {
         setIsLoading(true);
@@ -61,12 +70,81 @@ export default function OrdersManagementPage() {
         }
     };
 
+    const openPaymentModal = (order: Order) => {
+        setSelectedOrderForPayment(order);
+        setPaymentAmount(Math.max(0, Number(order.total_amount || 0) - Number(order.advance_paid || 0)));
+        setPaymentMethod("bank_transfer");
+        setTransactionId("");
+        setIsPaymentModalOpen(true);
+    };
+
+    const closePaymentModal = () => {
+        setIsPaymentModalOpen(false);
+        setSelectedOrderForPayment(null);
+    };
+
+    const handleSubmitPayment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedOrderForPayment) return;
+        
+        setIsSubmittingPayment(true);
+        try {
+            let invoiceId = "";
+            
+            // If the order is quoted, we must confirm it first to generate the invoice
+            if (selectedOrderForPayment.status === 'quoted') {
+                const confirmResponse = await confirmOrder(selectedOrderForPayment.id);
+                if (confirmResponse?.invoice?.id) {
+                    invoiceId = confirmResponse.invoice.id;
+                } else {
+                    throw new Error("Failed to generate invoice during confirmation.");
+                }
+            } else {
+                // If the order is already confirmed/preparing, fetch its invoice
+                const invoices = await getInvoices(1, 10, { order_id: selectedOrderForPayment.id });
+                if (invoices && invoices.length > 0) {
+                    invoiceId = invoices[0].id;
+                } else {
+                    throw new Error("No invoice found for this confirmed order.");
+                }
+            }
+            
+            // Record the payment
+            if (paymentAmount > 0) {
+                await recordPayment(
+                    invoiceId,
+                    paymentAmount,
+                    paymentMethod,
+                    transactionId || "", // Passed to transaction_id in backend which gets saved
+                    selectedOrderForPayment.status === 'quoted' ? "Advance" : "Payment" // Passed to notes (ignored by DB, but kept for schema validation)
+                );
+                alert("Payment successfully logged and synced with Billing!");
+            } else if (selectedOrderForPayment.status === 'quoted') {
+                alert("Order confirmed successfully without payment.");
+            }
+            
+            closePaymentModal();
+            await fetchOrders();
+        } catch (err: any) {
+            console.warn(err);
+            const errorMsg = err.response?.data?.message || err.message || "Server Error";
+            if (errorMsg.toLowerCase().includes('stock')) {
+                 alert("⚠️ Insufficient Stock!\n\nYou do not have enough stock available to fulfill this order's recipe. Please go to the Stock Management module, log a purchase for the required ingredients, and then try again.");
+            } else {
+                 alert("Failed to process payment flow: " + errorMsg);
+            }
+        } finally {
+            setIsSubmittingPayment(false);
+        }
+    };
+
     const handleAction = async (orderId: string, actionType: 'quote' | 'confirm' | 'complete') => {
         try {
             if (actionType === 'quote') {
                 await generateQuotation(orderId);
                 alert("Quotation generated successfully!");
             } else if (actionType === 'confirm') {
+                if (!confirm("Confirming this order will permanently reserve stock inventory and generate an official invoice. Proceed?")) return;
                 await confirmOrder(orderId);
                 alert("Order legally confirmed and stock reserved!");
             } else if (actionType === 'complete') {
@@ -75,8 +153,13 @@ export default function OrdersManagementPage() {
             // Refresh to see new states
             await fetchOrders();
         } catch (err: any) {
-            console.error(err);
-            alert(err.response?.data?.message || `Failed to process ${actionType} action.`);
+            console.warn(err);
+            const errorMsg = err.response?.data?.message || err.message;
+            if (errorMsg?.toLowerCase().includes('stock')) {
+                 alert("⚠️ Insufficient Stock!\n\nYou do not have enough stock available to fulfill this order's recipe. Please go to the Stock Management module, log a purchase for the required ingredients, and then try confirming again.");
+            } else {
+                 alert(errorMsg || `Failed to process ${actionType} action.`);
+            }
         }
     };
 
@@ -268,13 +351,18 @@ export default function OrdersManagementPage() {
                                                     TBD (Mint Quote)
                                                 </div>
                                             ) : (
-                                                <div className="text-sm font-extrabold text-[#689F38]">
-                                                    ₹ {Number(order.total_amount || 0).toLocaleString()}
-                                                </div>
-                                            )}
-                                            {Number(order.advance_paid) > 0 && (
-                                                <div className="text-[11px] font-bold text-green-600 mt-1">
-                                                    Paid: ₹ {Number(order.advance_paid).toLocaleString()}
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <div className="text-sm font-extrabold text-[#689F38]" title="Total Value">
+                                                        Total: ₹ {Number(order.total_amount || 0).toLocaleString()}
+                                                    </div>
+                                                    <div className="text-[11px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100" title="Advance/Paid Amount">
+                                                        Paid: ₹ {Number(order.advance_paid || 0).toLocaleString()}
+                                                    </div>
+                                                    {Number(order.total_amount || 0) > Number(order.advance_paid || 0) && (
+                                                        <div className="text-[11px] font-bold text-red-500" title="Amount left to pay">
+                                                            Pending: ₹ {(Number(order.total_amount || 0) - Number(order.advance_paid || 0)).toLocaleString()}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </td>
@@ -289,22 +377,43 @@ export default function OrdersManagementPage() {
                                             <div className="flex flex-col items-end gap-2">
                                                 <a 
                                                     href={`/dashboard/orders/${order.id}`}
-                                                    className="bg-white border border-gray-200 text-gray-700 hover:text-blue-600 hover:border-blue-300 shadow-sm px-3 py-1.5 rounded-lg font-bold text-xs transition-all inline-block"
+                                                    className="bg-white border border-gray-200 text-gray-700 hover:text-blue-600 hover:border-blue-300 shadow-sm px-3 py-1.5 rounded-lg font-bold text-xs transition-all inline-block w-full text-center"
                                                 >
                                                     View Details
                                                 </a>
-                                                {order.status === 'quoted' && (
+                                                
+                                                {/* Only show Log Payment if the order is confirmed/beyond and there is a pending balance */}
+                                                {!['draft', 'quoted', 'cancelled'].includes(order.status) && (Number(order.total_amount || 0) > Number(order.advance_paid || 0)) && (
                                                     <button 
-                                                        onClick={() => handleAction(order.id, 'confirm')}
-                                                        className="bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white border border-purple-200 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
+                                                        onClick={() => openPaymentModal(order)}
+                                                        className="bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white border border-blue-200 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm w-full text-center"
+                                                        title="Log Payment in Billing Dashboard"
                                                     >
-                                                        FINALIZE & LOCK
+                                                        LOG PAYMENT
                                                     </button>
+                                                )}
+
+                                                {order.status === 'quoted' && (
+                                                    <div className="flex gap-2 w-full">
+                                                        <button 
+                                                            onClick={() => openPaymentModal(order)}
+                                                            className="bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white border border-blue-200 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm w-full text-center"
+                                                        >
+                                                            LOG PAYMENT
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleAction(order.id, 'confirm')}
+                                                            className="bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white border border-purple-200 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm w-full"
+                                                            title="Confirm without payment"
+                                                        >
+                                                            CONFIRM
+                                                        </button>
+                                                    </div>
                                                 )}
                                                 {order.status === 'confirmed' && (
                                                     <button 
                                                         onClick={() => updateOrderStatus(order.id, 'preparing').then(() => fetchOrders())}
-                                                        className="bg-orange-50 text-orange-700 hover:bg-orange-500 hover:text-white border border-orange-200 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
+                                                        className="bg-orange-50 text-orange-700 hover:bg-orange-500 hover:text-white border border-orange-200 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm w-full"
                                                     >
                                                         COMMENCE PREP
                                                     </button>
@@ -312,13 +421,13 @@ export default function OrdersManagementPage() {
                                                 {order.status === 'preparing' && (
                                                     <button 
                                                         onClick={() => handleAction(order.id, 'complete')}
-                                                        className="bg-[#689F38]/10 text-[#558B2F] hover:bg-[#689F38] hover:text-white border border-[#689F38]/30 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm"
+                                                        className="bg-[#689F38]/10 text-[#558B2F] hover:bg-[#689F38] hover:text-white border border-[#689F38]/30 px-3 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm w-full"
                                                     >
                                                         MARK FULFILLED
                                                     </button>
                                                 )}
-                                                {['completed', 'cancelled'].includes(order.status) && (
-                                                    <span className="text-xs font-bold text-gray-400 italic">No Quick Actions</span>
+                                                {['completed', 'cancelled'].includes(order.status) && (Number(order.total_amount || 0) <= Number(order.advance_paid || 0)) && (
+                                                    <span className="text-xs font-bold text-gray-400 italic">Fully Settled</span>
                                                 )}
                                             </div>
                                         </td>
@@ -329,6 +438,90 @@ export default function OrdersManagementPage() {
                     )}
                 </div>
             </div>
+
+            {/* Payment Modal */}
+            {isPaymentModalOpen && selectedOrderForPayment && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={closePaymentModal}></div>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-md z-10 overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-blue-50/50">
+                            <div>
+                                <h2 className="text-xl font-extrabold text-blue-900">Log Payment</h2>
+                                <p className="text-sm text-blue-700 font-medium">For Order #{selectedOrderForPayment.id.split('-')[0]}</p>
+                            </div>
+                            <button onClick={closePaymentModal} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            {selectedOrderForPayment.status === 'quoted' && (
+                                <div className="mb-4 bg-yellow-50 text-yellow-800 p-3 rounded-lg text-xs font-medium border border-yellow-200 flex gap-2 items-start">
+                                    <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span><span className="font-bold">Note:</span> Logging a payment will automatically confirm this quotation, reserve stock, and generate an official invoice.</span>
+                                </div>
+                            )}
+                            
+                            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg mb-4 border border-gray-100">
+                                <div>
+                                    <p className="text-xs text-gray-500 font-bold uppercase">Total Order Value</p>
+                                    <p className="text-lg font-black text-gray-900">₹{Number(selectedOrderForPayment.total_amount || 0).toLocaleString()}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs text-gray-500 font-bold uppercase">Already Paid</p>
+                                    <p className="text-lg font-black text-green-600">₹{Number(selectedOrderForPayment.advance_paid || 0).toLocaleString()}</p>
+                                </div>
+                            </div>
+                            
+                            <form onSubmit={handleSubmitPayment} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Amount Paid Now (₹)</label>
+                                    <input 
+                                        type="number" 
+                                        required min="0.01" step="0.01" max={Number(selectedOrderForPayment.total_amount || 0) - Number(selectedOrderForPayment.advance_paid || 0)}
+                                        value={paymentAmount || ''}
+                                        onChange={e => setPaymentAmount(parseFloat(e.target.value))}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none font-bold text-lg"
+                                        placeholder="Enter amount..."
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">Pending balance: ₹{(Number(selectedOrderForPayment.total_amount || 0) - Number(selectedOrderForPayment.advance_paid || 0)).toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Payment Method</label>
+                                    <select 
+                                        value={paymentMethod}
+                                        onChange={e => setPaymentMethod(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                    >
+                                        <option value="cash">Cash</option>
+                                        <option value="card">Credit/Debit Card</option>
+                                        <option value="bank_transfer">Bank Transfer (UPI/NEFT)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Transaction ID (Optional)</label>
+                                    <input 
+                                        type="text" 
+                                        value={transactionId}
+                                        onChange={e => setTransactionId(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                        placeholder="E.g., UPI Ref, Bank UTR..."
+                                    />
+                                </div>
+                                <div className="pt-4 flex justify-end gap-3">
+                                    <button type="button" onClick={closePaymentModal} className="px-4 py-2 border border-gray-300 font-bold rounded-lg hover:bg-gray-50">Cancel</button>
+                                    <button type="submit" disabled={isSubmittingPayment} className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-md">
+                                        {isSubmittingPayment ? "Processing..." : (selectedOrderForPayment.status === 'quoted' ? "Log Payment & Confirm" : "Log Payment")}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
 
         </div>
     );

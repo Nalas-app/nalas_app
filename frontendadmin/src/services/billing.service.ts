@@ -39,6 +39,7 @@ export interface Payment {
 export const getInvoices = async (page = 1, limit = 50, filters?: any): Promise<Invoice[]> => {
     const queryParams = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
     if (filters?.status) queryParams.append('status', filters.status);
+    if (filters?.order_id) queryParams.append('order_id', filters.order_id);
     
     const response = await api.get(`/billing/invoices?${queryParams.toString()}`);
     return response.data.data;
@@ -55,7 +56,7 @@ export const recordPayment = async (invoiceId: string, amount: number, paymentMe
         invoice_id: invoiceId,
         amount,
         payment_method: paymentMethod,
-        reference_number: referenceNumber,
+        transaction_id: referenceNumber,
         notes
     };
     const response = await api.post(`/billing/payments`, payload);

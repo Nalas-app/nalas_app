@@ -8,7 +8,7 @@ import {
     confirmOrder, 
     updateOrderStatus
 } from "@/services/orders.service";
-import { getQuotations } from "@/services/billing.service";
+import { getQuotations, recordPayment } from "@/services/billing.service";
 import { getErrorMessage } from "@/utils/errorHandler";
 import Link from "next/link";
 
@@ -78,11 +78,40 @@ export default function OrderDetailsPage() {
     const handleConfirmOrder = async () => {
         if (!confirm("Confirming this order will permanently reserve stock inventory and generate an official invoice. Proceed?")) return;
         
+        // Ask for Advance or Full Payment
+        let advanceAmount = 0;
+        const advanceInput = prompt("Enter Payment Amount collected (Advance or Full Total in ₹):\n(Leave blank or enter 0 if no payment was made yet)");
+        if (advanceInput !== null && advanceInput.trim() !== "") {
+            advanceAmount = parseFloat(advanceInput);
+            if (isNaN(advanceAmount) || advanceAmount < 0) {
+                alert("Invalid advance amount entered. Proceeding without recording an advance.");
+                advanceAmount = 0;
+            }
+        }
+        
         setActionLoading(true);
         setError("");
         try {
             const response = await confirmOrder(orderId);
             setInvoiceDetails(response.invoice);
+            
+            // If advance was collected, record it to the newly generated invoice
+            if (advanceAmount > 0 && response.invoice?.id) {
+                try {
+                    await recordPayment(
+                        response.invoice.id,
+                        advanceAmount,
+                        "cash", // default to cash for quick advance
+                        "", // pass empty string instead of undefined
+                        "Initial Advance Payment"
+                    );
+                } catch (paymentErr: any) {
+                    // Do not use console.error to avoid Next.js dev overlay, use console.warn instead
+                    console.warn("Failed to record advance payment", paymentErr?.message || paymentErr);
+                    alert("Order confirmed, but failed to log the advance payment automatically due to a server error. Please log it manually in the Billing page.");
+                }
+            }
+
             await fetchOrder(); // Refresh the status
         } catch (err: any) {
             console.error(err);

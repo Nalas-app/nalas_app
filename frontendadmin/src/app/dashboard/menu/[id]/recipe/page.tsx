@@ -135,7 +135,7 @@ export default function RecipeBuilderPage() {
                                 {menuItem.name}
                             </span>
                         </h1>
-                        <p className="text-gray-500 text-sm mt-1">Define ingredients required for 1 {menuItem.base_unit}</p>
+                        <p className="text-gray-500 text-sm mt-1">Define ingredients required for {menuItem.base_unit}</p>
                     </div>
                 </div>
             </div>

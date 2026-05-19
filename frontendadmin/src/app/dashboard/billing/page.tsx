@@ -18,7 +18,7 @@ export default function BillingManagementPage() {
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [paymentAmount, setPaymentAmount] = useState<number>(0);
     const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
-    const [paymentNotes, setPaymentNotes] = useState("");
+    const [transactionId, setTransactionId] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const fetchInvoices = async () => {
@@ -53,13 +53,88 @@ export default function BillingManagementPage() {
         setSelectedInvoice(invoice);
         setPaymentAmount(Number(invoice.pending_amount));
         setPaymentMethod("bank_transfer");
-        setPaymentNotes("");
+        setTransactionId("");
         setIsPaymentModalOpen(true);
     };
 
     const closePaymentModal = () => {
         setIsPaymentModalOpen(false);
         setSelectedInvoice(null);
+    };
+
+    const handlePrintInvoice = (inv: Invoice) => {
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Invoice #${inv.invoice_number}</title>
+                        <style>
+                            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #333; max-width: 800px; margin: 0 auto; }
+                            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
+                            h1 { color: #689F38; margin: 0; font-size: 32px; }
+                            table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+                            th, td { padding: 15px 10px; border-bottom: 1px solid #eee; text-align: left; }
+                            th { background: #f9fafb; color: #666; text-transform: uppercase; font-size: 12px; }
+                            .status { display: inline-block; padding: 5px 10px; border-radius: 4px; background: #f3f4f6; font-weight: bold; text-transform: uppercase; font-size: 12px; border: 1px solid #e5e7eb; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <div>
+                                <h1>NALAS</h1>
+                                <p style="color: #666; margin-top: 5px;">Premium Catering Services</p>
+                            </div>
+                            <div style="text-align: right">
+                                <h2 style="margin: 0; color: #374151;">INVOICE</h2>
+                                <p style="font-weight: bold; font-size: 18px; margin: 5px 0;">#${inv.invoice_number}</p>
+                                <p style="margin: 5px 0; color: #666;">Date: ${new Date(inv.invoice_date).toLocaleDateString()}</p>
+                                <p style="margin: 10px 0 0 0;"><span class="status">${inv.status}</span></p>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-bottom: 40px; background: #f9fafb; padding: 20px; border-radius: 8px;">
+                            <h3 style="margin-top: 0; color: #374151;">Bill To:</h3>
+                            <p style="margin: 5px 0; font-family: monospace;">Order Ref: ${inv.order_id}</p>
+                        </div>
+                        
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th style="text-align: right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Event Catering Services & Logistics<br><span style="color: #666; font-size: 12px;">As per confirmed order manifest.</span></td>
+                                    <td style="text-align: right; font-weight: bold;">Rs. ${Number(inv.total_amount).toLocaleString()}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <div style="text-align: right; margin-top: 40px; padding-top: 20px; border-top: 2px solid #eee;">
+                            <p style="margin: 5px 0; color: #4b5563;"><strong>Subtotal:</strong> Rs. ${Number(inv.total_amount).toLocaleString()}</p>
+                            <p style="margin: 5px 0; color: #059669;"><strong>Advance/Paid:</strong> Rs. ${Number(inv.paid_amount || 0).toLocaleString()}</p>
+                            <p style="font-size: 24px; color: #dc2626; margin: 15px 0 5px 0;">
+                                <strong>Amount Due:</strong> Rs. ${Number(inv.pending_amount).toLocaleString()}
+                            </p>
+                            <p style="color: #6b7280; font-size: 14px; margin: 0;">Due Date: ${new Date(inv.due_date).toLocaleDateString()}</p>
+                        </div>
+                        
+                        <div style="margin-top: 80px; text-align: center; color: #9ca3af; border-top: 1px dashed #e5e7eb; padding-top: 20px;">
+                            <p style="font-weight: bold; margin-bottom: 5px;">Thank you for choosing Nalas!</p>
+                            <p style="font-size: 12px;">This is a computer-generated invoice and does not require a physical signature.</p>
+                        </div>
+                        
+                        <script>
+                            window.onload = () => { setTimeout(() => { window.print(); window.close(); }, 500); }
+                        </script>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
     };
 
     const handleRecordPayment = async (e: React.FormEvent) => {
@@ -72,8 +147,8 @@ export default function BillingManagementPage() {
                 selectedInvoice.id, 
                 paymentAmount, 
                 paymentMethod, 
-                undefined, 
-                paymentNotes
+                transactionId || "", 
+                "Payment"
             );
             await fetchInvoices();
             closePaymentModal();
@@ -126,7 +201,7 @@ export default function BillingManagementPage() {
                                     <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Due Date</th>
                                     <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Financials</th>
-                                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                                    <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-100">
@@ -157,14 +232,27 @@ export default function BillingManagementPage() {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-right whitespace-nowrap">
-                                            {['pending', 'partial', 'overdue'].includes(inv.status) && (
+                                            <div className="flex justify-end gap-2">
                                                 <button 
-                                                    onClick={() => openPaymentModal(inv)}
-                                                    className="bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg text-sm font-bold border border-blue-200 transition-colors"
+                                                    onClick={() => handlePrintInvoice(inv)}
+                                                    className="bg-gray-50 text-gray-600 hover:bg-gray-200 hover:text-gray-900 px-3 py-1.5 rounded-lg text-sm font-bold border border-gray-200 transition-colors flex items-center gap-1"
+                                                    title="Download/Print PDF"
                                                 >
-                                                    Log Payment
+                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                    </svg>
+                                                    Bill
                                                 </button>
-                                            )}
+                                                
+                                                {['pending', 'partial', 'overdue'].includes(inv.status) && (
+                                                    <button 
+                                                        onClick={() => openPaymentModal(inv)}
+                                                        className="bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg text-sm font-bold border border-blue-200 transition-colors"
+                                                    >
+                                                        Pay
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -216,13 +304,13 @@ export default function BillingManagementPage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Notes (Optional)</label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Transaction ID (Optional)</label>
                                     <input 
                                         type="text" 
-                                        value={paymentNotes}
-                                        onChange={e => setPaymentNotes(e.target.value)}
+                                        value={transactionId}
+                                        onChange={e => setTransactionId(e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none"
-                                        placeholder="Transaction ID / Details"
+                                        placeholder="E.g., UPI Ref, Bank UTR..."
                                     />
                                 </div>
                                 <div className="pt-4 flex justify-end gap-3">

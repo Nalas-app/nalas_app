@@ -23,13 +23,32 @@ export interface MenuItem {
 }
 
 export const getCategories = async (): Promise<MenuCategory[]> => {
-  const response = await api.get("/menu/categories");
-  return response.data.data;
+  // The backend API strictly filters by is_active (true or false) with no option to fetch all.
+  // To ensure the admin sees all categories, we fetch both active and inactive ones and merge them.
+  const [activeResponse, inactiveResponse] = await Promise.all([
+    api.get("/menu/categories"),
+    api.get("/menu/categories?is_active=false")
+  ]);
+  
+  const allCategories = [
+    ...(activeResponse.data.data || []),
+    ...(inactiveResponse.data.data || [])
+  ];
+  
+  // Sort them by display order
+  return allCategories.sort((a, b) => a.display_order - b.display_order);
 };
 
 export const getMenuItems = async (page = 1, limit = 50): Promise<MenuItem[]> => {
   const response = await api.get(`/menu/items?page=${page}&limit=${limit}`);
-  return response.data.data;
+  const items: MenuItem[] = response.data.data || [];
+  
+  // Sort items alphabetically (case-insensitive)
+  return items.sort((a, b) => {
+    const nameA = a.name ? a.name.toLowerCase() : '';
+    const nameB = b.name ? b.name.toLowerCase() : '';
+    return nameA.localeCompare(nameB);
+  });
 };
 
 export const getMenuItemById = async (id: string): Promise<MenuItem> => {
