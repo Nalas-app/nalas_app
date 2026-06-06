@@ -51,6 +51,11 @@ export const getQuotations = async (orderId?: string): Promise<Quotation[]> => {
     return response.data.data;
 };
 
+export const getQuotationById = async (quotationId: string): Promise<any> => {
+    const response = await api.get(`/billing/quotations/${quotationId}`);
+    return response.data.data;
+};
+
 export const recordPayment = async (invoiceId: string, amount: number, paymentMethod: string, referenceNumber?: string, notes?: string): Promise<Payment> => {
     const payload = {
         invoice_id: invoiceId,

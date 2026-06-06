@@ -142,7 +142,14 @@ export default function StockManagementPage() {
         setError("");
 
         try {
-            await createIngredient(ingredientFormData);
+            const payload = { ...ingredientFormData };
+            
+            // Remove shelf_life_days if it's an empty string or if not perishable
+            if (!payload.is_perishable || payload.shelf_life_days === "") {
+                delete payload.shelf_life_days;
+            }
+
+            await createIngredient(payload);
             setIsIngredientModalOpen(false);
             setIngredientFormData({
                 name: "",
@@ -196,7 +203,13 @@ export default function StockManagementPage() {
         setError("");
 
         try {
-            await updateIngredient(editingIngredientId, editIngredientFormData);
+            const payload = { ...editIngredientFormData };
+            
+            if (!payload.is_perishable || payload.shelf_life_days === "") {
+                delete payload.shelf_life_days;
+            }
+
+            await updateIngredient(editingIngredientId, payload);
             setIsEditModalOpen(false);
             setEditingIngredientId(null);
             await fetchData();
@@ -433,8 +446,8 @@ export default function StockManagementPage() {
                                                 formData.transaction_type === 'adjustment' 
                                                 ? (formData.quantity || 0)
                                                 : formData.transaction_type === 'purchase'
-                                                ? (selectedStock.available_quantity + (formData.quantity || 0))
-                                                : (selectedStock.available_quantity - (formData.quantity || 0))
+                                                ? (Number(selectedStock.available_quantity) + (Number(formData.quantity) || 0))
+                                                : (Number(selectedStock.available_quantity) - (Number(formData.quantity) || 0))
                                             } {selectedStock.unit}
                                         </div>
                                     </div>

@@ -247,7 +247,7 @@ export default function OrdersManagementPage() {
                     </div>
                     <div>
                         <p className="text-sm font-bold text-gray-500 uppercase">Pipeline Value</p>
-                        <h3 className="text-2xl font-black text-gray-900">₹ {filteredOrders.reduce((sum, order) => sum + Number(order.total_amount || 0), 0).toLocaleString()}</h3>
+                        <h3 className="text-2xl font-black text-gray-900">₹ {filteredOrders.reduce((sum, order) => order.status !== 'cancelled' ? sum + Number(order.total_amount || 0) : sum, 0).toLocaleString()}</h3>
                     </div>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 transition-transform hover:scale-[1.01]">
@@ -258,7 +258,7 @@ export default function OrdersManagementPage() {
                     </div>
                     <div>
                         <p className="text-sm font-bold text-gray-500 uppercase">Advance Collected</p>
-                        <h3 className="text-2xl font-black text-gray-900">₹ {filteredOrders.reduce((sum, order) => sum + Number(order.advance_paid || 0), 0).toLocaleString()}</h3>
+                        <h3 className="text-2xl font-black text-gray-900">₹ {filteredOrders.reduce((sum, order) => order.status !== 'cancelled' ? sum + Number(order.advance_paid || 0) : sum, 0).toLocaleString()}</h3>
                     </div>
                 </div>
             </div>

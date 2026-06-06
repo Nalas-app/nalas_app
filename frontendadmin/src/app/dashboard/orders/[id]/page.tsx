@@ -8,7 +8,7 @@ import {
     confirmOrder, 
     updateOrderStatus
 } from "@/services/orders.service";
-import { getQuotations, recordPayment } from "@/services/billing.service";
+import { getQuotations, getQuotationById, recordPayment } from "@/services/billing.service";
 import { getErrorMessage } from "@/utils/errorHandler";
 import Link from "next/link";
 
@@ -37,7 +37,16 @@ export default function OrderDetailsPage() {
             if (data.status !== 'draft') {
                 const quotes = await getQuotations(orderId);
                 if (quotes && quotes.length > 0) {
-                    setQuotationDetails(quotes[0]); // Persist across refreshes
+                    try {
+                        const fullQuote = await getQuotationById(quotes[0].id);
+                        setQuotationDetails((prev: any) => {
+                            // If we already have the richer generateQuotation response, keep it
+                            if (prev && prev.is_ml_predicted !== undefined) return prev;
+                            return fullQuote;
+                        });
+                    } catch (e) {
+                        setQuotationDetails(quotes[0]);
+                    }
                 }
             }
         } catch (err: any) {

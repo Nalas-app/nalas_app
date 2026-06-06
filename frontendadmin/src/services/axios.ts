@@ -1,4 +1,6 @@
 import axios from "axios";
+import { toast } from "react-hot-toast";
+import { getErrorMessage } from "../utils/errorHandler";
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
@@ -122,6 +124,13 @@ api.interceptors.response.use(
           localStorage.removeItem("refreshToken");
           document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
           window.location.href = "/";
+      }
+    }
+
+    // Display error notification globally, except for 401s (handled by refresh logic) and refresh failures
+    if (error.response?.status !== 401 && originalRequest?.url !== '/auth/refresh') {
+      if (typeof window !== "undefined") {
+        toast.error(getErrorMessage(error));
       }
     }
 

@@ -88,7 +88,7 @@ export default function BillingManagementPage() {
                             <div style="text-align: right">
                                 <h2 style="margin: 0; color: #374151;">INVOICE</h2>
                                 <p style="font-weight: bold; font-size: 18px; margin: 5px 0;">#${inv.invoice_number}</p>
-                                <p style="margin: 5px 0; color: #666;">Date: ${new Date(inv.invoice_date).toLocaleDateString()}</p>
+                                <p style="margin: 5px 0; color: #666;">Date: ${new Date(inv.created_at).toLocaleDateString()}</p>
                                 <p style="margin: 10px 0 0 0;"><span class="status">${inv.status}</span></p>
                             </div>
                         </div>

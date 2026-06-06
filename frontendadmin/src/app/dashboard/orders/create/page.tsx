@@ -294,7 +294,7 @@ export default function CreateOrderPage() {
                                 <button 
                                     type="button"
                                     onClick={handleAddItem}
-                                    disabled={!selectedMenuId || selectedQuantity === "" || (selectedMenuId && Number(selectedQuantity) < Number(menuItems.find(i => i.id === selectedMenuId)?.min_quantity || 0))}
+                                    disabled={!selectedMenuId || selectedQuantity === "" || (Boolean(selectedMenuId) && Number(selectedQuantity) < Number(menuItems.find(i => i.id === selectedMenuId)?.min_quantity || 0))}
                                     className="w-full h-[38px] bg-[#689F38] hover:bg-[#558B2F] disabled:bg-gray-300 text-white rounded-lg font-bold transition-colors shadow-sm flex items-center justify-center"
                                 >
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
