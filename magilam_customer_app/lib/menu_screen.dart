@@ -236,7 +236,24 @@ class _MenuScreenState extends State<MenuScreen> {
                               )
                             : null,
                         title: Text(item.name),
-                        subtitle: Text("₹${item.pricePerUnit} per ${item.baseUnit}"),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("₹${item.pricePerUnit} per ${item.baseUnit}"),
+                            if (item.minQuantity > 1)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  "Min Qty: ${item.minQuantity.toInt()}",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.orange.shade800,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         trailing: qty == 0
                             ? ElevatedButton(
                                 style: ElevatedButton.styleFrom(
@@ -251,7 +268,14 @@ class _MenuScreenState extends State<MenuScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   IconButton(
-                                    icon: const Icon(Icons.remove),
+                                    icon: Icon(
+                                      qty <= item.minQuantity.toInt()
+                                          ? Icons.delete_outline
+                                          : Icons.remove,
+                                      color: qty <= item.minQuantity.toInt()
+                                          ? Colors.red
+                                          : Colors.black,
+                                    ),
                                     onPressed: () => cart.removeItem(item.id),
                                   ),
                                   Text(

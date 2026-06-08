@@ -104,8 +104,8 @@ class MenuProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ─── Mock Data Fallback ───────────────────────────────────
-
+  // ─── Mock Data Fallback (Unused, commented out to avoid warnings) ─────────────────
+  /*
   List<MenuCategory> _getMockCategories() {
     return [
       MenuCategory(id: 'cat-1', name: 'Breakfast', displayOrder: 1, isActive: true),
@@ -152,4 +152,5 @@ class MenuProvider extends ChangeNotifier {
       Ingredient(ingredientId: 'ing-5', ingredientName: 'Coconut Oil', unit: 'ml', quantityPerBaseUnit: 15, costPerUnit: 0.30, totalCostWithWastage: 4.73),
     ];
   }
+  */
 }

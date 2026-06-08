@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
  import '../theme.dart';
 import 'package:provider/provider.dart';
 import 'providers/cart_provider.dart';
-import 'providers/auth_provider.dart';
 
 class BillingScreen extends StatelessWidget {
   final bool isFromOrder;
@@ -11,10 +10,7 @@ class BillingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
     final cartProvider = context.watch<CartProvider>();
-    final isAdmin = authProvider.role == 'admin' || authProvider.role == 'super_admin';
-
     // Get event details from route arguments
     final eventDetails = isFromOrder
         ? ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?

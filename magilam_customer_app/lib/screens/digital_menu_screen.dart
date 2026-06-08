@@ -170,39 +170,66 @@ class _DigitalMenuScreenState extends State<DigitalMenuScreen>
                                   ],
                                 ),
                               ),
-                              // Quantity controls
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.sandalBeige,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.remove, size: 18),
-                                      onPressed: () => cart.removeItem(cartItem.menuItem.id),
-                                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                                      padding: EdgeInsets.zero,
+                              // Quantity controls with min_quantity awareness
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: AppColors.sandalBeige,
+                                      borderRadius: BorderRadius.circular(12),
                                     ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          // Show delete icon when at min_quantity (next tap removes item)
+                                          icon: Icon(
+                                            cartItem.quantity <= cartItem.menuItem.minQuantity.toInt()
+                                                ? Icons.delete_outline
+                                                : Icons.remove,
+                                            size: 18,
+                                            color: cartItem.quantity <= cartItem.menuItem.minQuantity.toInt()
+                                                ? Colors.red
+                                                : null,
+                                          ),
+                                          onPressed: () => cart.removeItem(cartItem.menuItem.id),
+                                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                                          child: Text(
+                                            '${cartItem.quantity}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.add, size: 18),
+                                          onPressed: () => cart.addItem(cartItem.menuItem),
+                                          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Show min quantity label
+                                  if (cartItem.menuItem.minQuantity > 1)
                                     Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                                      padding: const EdgeInsets.only(top: 2),
                                       child: Text(
-                                        '${cartItem.quantity}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 15,
+                                        'min ${cartItem.menuItem.minQuantity.toInt()}',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          color: AppColors.textSecondary.withOpacity(0.7),
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ),
-                                    IconButton(
-                                      icon: const Icon(Icons.add, size: 18),
-                                      onPressed: () => cart.addItem(cartItem.menuItem),
-                                      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                  ],
-                                ),
+                                ],
                               ),
                               // Subtotal
                               SizedBox(

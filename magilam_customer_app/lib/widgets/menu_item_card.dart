@@ -259,12 +259,17 @@ class _MenuItemCardState extends State<MenuItemCard>
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 _buildCircleButton(
-                                  icon: Icons.remove,
+                                  // Show delete icon when at min_quantity
+                                  icon: widget.quantity <= widget.item.minQuantity.toInt()
+                                      ? Icons.delete_outline
+                                      : Icons.remove,
                                   onTap: () {
                                     HapticFeedback.lightImpact();
                                     widget.onRemove();
                                   },
-                                  color: AppColors.orangeAccent,
+                                  color: widget.quantity <= widget.item.minQuantity.toInt()
+                                      ? Colors.red
+                                      : AppColors.orangeAccent,
                                   size: 30,
                                 ),
                                 Padding(

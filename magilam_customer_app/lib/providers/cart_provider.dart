@@ -51,7 +51,9 @@ class CartProvider extends ChangeNotifier {
     if (_items.containsKey(menuItem.id)) {
       _items[menuItem.id]!.quantity++;
     } else {
-      _items[menuItem.id] = CartItem(menuItem: menuItem, quantity: 1);
+      // Start at min_quantity from the API (defaults to 1)
+      final startQty = menuItem.minQuantity.toInt().clamp(1, 9999);
+      _items[menuItem.id] = CartItem(menuItem: menuItem, quantity: startQty);
     }
     notifyListeners();
     fetchCostEstimate(); // Auto-refresh estimate
@@ -59,9 +61,13 @@ class CartProvider extends ChangeNotifier {
 
   void removeItem(String itemId) {
     if (_items.containsKey(itemId)) {
-      if (_items[itemId]!.quantity > 1) {
-        _items[itemId]!.quantity--;
+      final cartItem = _items[itemId]!;
+      final minQty = cartItem.menuItem.minQuantity.toInt().clamp(1, 9999);
+      if (cartItem.quantity > minQty) {
+        // Decrease but stay at or above min_quantity
+        cartItem.quantity--;
       } else {
+        // Already at min_quantity — remove from cart entirely
         _items.remove(itemId);
       }
       notifyListeners();
@@ -88,7 +94,8 @@ class CartProvider extends ChangeNotifier {
       if (quantity <= 0) {
         _items.remove(itemId);
       } else {
-        _items[itemId]!.quantity = quantity;
+        final minQty = _items[itemId]!.menuItem.minQuantity.toInt().clamp(1, 9999);
+        _items[itemId]!.quantity = quantity < minQty ? minQty : quantity;
       }
       notifyListeners();
       if (_items.isNotEmpty) {
@@ -168,6 +175,17 @@ class CartProvider extends ChangeNotifier {
   Future<PaymentResult> confirmOrder({Map<String, dynamic>? eventDetails}) async {
     if (_items.isEmpty) {
       return PaymentResult(success: false, message: 'Cart is empty');
+    }
+
+    // Client-side min_quantity pre-validation before hitting the API
+    for (final cartItem in _items.values) {
+      final minQty = cartItem.menuItem.minQuantity.toInt().clamp(1, 9999);
+      if (cartItem.quantity < minQty) {
+        return PaymentResult(
+          success: false,
+          message: 'Minimum quantity for ${cartItem.menuItem.name} is $minQty. You have ${cartItem.quantity}.',
+        );
+      }
     }
 
     _isLoadingEstimate = true; // Use this as general loading state
