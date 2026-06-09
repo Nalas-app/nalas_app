@@ -8,7 +8,7 @@ import {
     confirmOrder, 
     updateOrderStatus
 } from "@/services/orders.service";
-import { getQuotations, getQuotationById, recordPayment } from "@/services/billing.service";
+import { getQuotations, getQuotationById, recordPayment, getInvoices } from "@/services/billing.service";
 import { getErrorMessage } from "@/utils/errorHandler";
 import Link from "next/link";
 
@@ -49,6 +49,21 @@ export default function OrderDetailsPage() {
                     }
                 }
             }
+            // If order has an invoice, fetch it to show payment details
+            if (['confirmed', 'preparing', 'completed'].includes(data.status)) {
+                try {
+                    const invoices = await getInvoices(1, 10, { order_id: orderId });
+                    if (invoices && invoices.length > 0) {
+                        setInvoiceDetails(invoices[0]);
+                        // Patch the order's advance_paid with the invoice's paid_amount
+                        data.advance_paid = invoices[0].paid_amount;
+                    }
+                } catch (e) {
+                    console.warn("Failed to fetch invoice for order", e);
+                }
+            }
+            
+            setOrder(data);
         } catch (err: any) {
             console.error(err);
             setError(getErrorMessage(err, "Failed to load order details."));
@@ -413,7 +428,7 @@ export default function OrderDetailsPage() {
                                 <div className="pb-6">
                                     <div className="flex items-baseline gap-2">
                                         <p className="text-sm font-bold text-gray-900 uppercase">{log.new_status}</p>
-                                        <p className="text-xs text-gray-400 font-mono">{new Date(log.created_at).toLocaleString()}</p>
+                                        <p className="text-xs text-gray-400 font-mono">{new Date(log.changed_at || log.created_at || new Date()).toLocaleString()}</p>
                                     </div>
                                     {log.notes && <p className="text-sm text-gray-600 mt-1 bg-gray-50 p-2 rounded inline-block border border-gray-100">{log.notes}</p>}
                                 </div>

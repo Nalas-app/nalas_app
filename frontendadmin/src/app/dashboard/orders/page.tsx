@@ -37,6 +37,26 @@ export default function OrdersManagementPage() {
             }
             
             const fetchedOrders = await getOrders(1, 50, filters);
+            
+            // WORKAROUND: Backend does not update order.advance_paid when payments are made.
+            // We fetch the most recent invoices and map their paid_amount to the orders to fix the UI.
+            try {
+                if (fetchedOrders && fetchedOrders.length > 0) {
+                    const recentInvoices = await getInvoices(1, 100);
+                    if (recentInvoices && recentInvoices.length > 0) {
+                        const invoiceMap = new Map(recentInvoices.map(inv => [inv.order_id, inv.paid_amount]));
+                        const mappedOrders = fetchedOrders.map((order: any) => ({
+                            ...order,
+                            advance_paid: invoiceMap.has(order.id) ? (invoiceMap.get(order.id) || 0) : (order.advance_paid || 0)
+                        }));
+                        setOrders(mappedOrders);
+                        return; // Exit early since we set mapped orders
+                    }
+                }
+            } catch (invoiceErr) {
+                console.warn("Failed to fetch invoices for patching advance_paid", invoiceErr);
+            }
+            
             setOrders(fetchedOrders || []);
         } catch (err: any) {
             console.error("Failed to load orders:", err);

@@ -42,7 +42,22 @@ export const getInvoices = async (page = 1, limit = 50, filters?: any): Promise<
     if (filters?.order_id) queryParams.append('order_id', filters.order_id);
     
     const response = await api.get(`/billing/invoices?${queryParams.toString()}`);
-    return response.data.data;
+    
+    // WORKAROUND: Backend list API returns payment_status instead of status, 
+    // invoice_date instead of created_at, and completely omits due_date.
+    return response.data.data.map((inv: any) => {
+        // Since backend sets due_date to 15 days after creation, we compute it here if missing
+        const computedDueDate = inv.invoice_date 
+            ? new Date(new Date(inv.invoice_date).getTime() + 15 * 24 * 60 * 60 * 1000).toISOString()
+            : new Date().toISOString();
+            
+        return {
+            ...inv,
+            status: inv.payment_status || 'pending',
+            created_at: inv.invoice_date,
+            due_date: inv.due_date || computedDueDate
+        };
+    });
 };
 
 export const getQuotations = async (orderId?: string): Promise<Quotation[]> => {
