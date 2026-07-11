@@ -80,14 +80,17 @@ export const createQuotation = async (orderId: string, applyGst: boolean = false
     return response.data.data;
 };
 
-export const recordPayment = async (invoiceId: string, amount: number, paymentMethod: string, referenceNumber?: string, notes?: string): Promise<Payment> => {
-    const payload = {
+export const recordPayment = async (invoiceId: string, amount: number, paymentMethod: string, referenceNumber?: string, notes?: string, paymentType?: string): Promise<Payment> => {
+    const payload: any = {
         invoice_id: invoiceId,
         amount,
         payment_method: paymentMethod,
         transaction_id: referenceNumber,
         notes
     };
+    if (paymentType) {
+        payload.payment_type = paymentType;
+    }
     const response = await api.post(`/billing/payments`, payload);
     return response.data.data;
 };

@@ -27,6 +27,7 @@ export default function OrderDetailsPage() {
     const [applyGst, setApplyGst] = useState(false);
     const [invoiceDetails, setInvoiceDetails] = useState<any>(null);
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+    const [settings, setSettings] = useState<any>(null);
 
     const fetchOrder = async () => {
         setIsLoading(true);
@@ -34,6 +35,16 @@ export default function OrderDetailsPage() {
         try {
             const data = await getOrderById(orderId);
             setOrder(data);
+            
+            // Fetch settings to reverse-calculate missing DB breakdown fields
+            let fetchedSettings: any = null;
+            try {
+                const { getAllSettings } = await import("@/services/settings.service");
+                fetchedSettings = await getAllSettings();
+                setSettings(fetchedSettings);
+            } catch (e) {
+                console.warn("Failed to fetch settings", e);
+            }
             
             // If order has a quotation, fetch it to show the breakdown persistently
             if (data.status !== 'draft') {
@@ -97,6 +108,10 @@ export default function OrderDetailsPage() {
         try {
             const response = await createQuotation(orderId, applyGst);
             setQuotationDetails(response);
+            
+            // Advance the lifecycle status to quoted
+            await updateOrderStatus(orderId, 'quoted');
+            
             await fetchOrder(); // Refresh the status and total
         } catch (err: any) {
             console.error(err);
@@ -148,7 +163,8 @@ export default function OrderDetailsPage() {
                         advanceAmount,
                         "cash", // default to cash for quick advance
                         "", // pass empty string instead of undefined
-                        "Initial Advance Payment"
+                        "Initial Advance Payment",
+                        "advance" // payment_type
                     );
                 } catch (paymentErr: any) {
                     // Do not use console.error to avoid Next.js dev overlay, use console.warn instead
@@ -181,6 +197,36 @@ export default function OrderDetailsPage() {
         } catch (err: any) {
             console.error(err);
             setError(getErrorMessage(err, "Failed to cancel order."));
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleStartPrep = async () => {
+        setActionLoading(true);
+        setError("");
+        try {
+            await updateOrderStatus(orderId, 'preparing');
+            await fetchOrder();
+        } catch (err: any) {
+            console.error(err);
+            setError(getErrorMessage(err, "Failed to start preparation."));
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleCompleteOrder = async () => {
+        if (!confirm("Mark this order as entirely fulfilled?")) return;
+        
+        setActionLoading(true);
+        setError("");
+        try {
+            await updateOrderStatus(orderId, 'completed');
+            await fetchOrder();
+        } catch (err: any) {
+            console.error(err);
+            setError(getErrorMessage(err, "Failed to mark as completed."));
         } finally {
             setActionLoading(false);
         }
@@ -257,7 +303,7 @@ export default function OrderDetailsPage() {
                                 disabled={actionLoading}
                                 className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold shadow-md shadow-blue-600/20 transition flex items-center disabled:opacity-70"
                             >
-                                {actionLoading ? "Processing ML..." : "Mint ML Quotation"}
+                                {actionLoading ? "Processing..." : "Mint Quotation"}
                             </button>
                         </div>
                     )}
@@ -268,6 +314,24 @@ export default function OrderDetailsPage() {
                             className="bg-[#689F38] hover:bg-[#558B2F] text-white px-5 py-2.5 rounded-lg font-bold shadow-md shadow-[#689F38]/20 transition flex items-center disabled:opacity-70"
                         >
                             {actionLoading ? "Reserving Stock..." : "Confirm & Reserve Stock"}
+                        </button>
+                    )}
+                    {order.status === 'confirmed' && (
+                        <button 
+                            onClick={handleStartPrep}
+                            disabled={actionLoading}
+                            className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-lg font-bold shadow-md shadow-amber-500/20 transition flex items-center disabled:opacity-70"
+                        >
+                            {actionLoading ? "Updating..." : "Start Preparation"}
+                        </button>
+                    )}
+                    {order.status === 'preparing' && (
+                        <button 
+                            onClick={handleCompleteOrder}
+                            disabled={actionLoading}
+                            className="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-lg font-bold shadow-md shadow-teal-600/20 transition flex items-center disabled:opacity-70"
+                        >
+                            {actionLoading ? "Finishing..." : "Mark as Completed"}
                         </button>
                     )}
                     {(order.status === 'draft' || order.status === 'quoted' || order.status === 'confirmed' || order.status === 'preparing') && (
@@ -288,68 +352,7 @@ export default function OrderDetailsPage() {
                 </div>
             )}
 
-            {/* If quotation details are available in memory, show them prominently */}
-            {quotationDetails && (
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100 shadow-sm animate-in slide-in-from-top-4">
-                    <div className="flex justify-between items-start mb-4">
-                        <div>
-                            <h2 className="text-lg font-extrabold text-blue-900 flex items-center gap-2">
-                                <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                </svg>
-                                ML Quotation Minted
-                            </h2>
-                            <p className="text-blue-700/80 text-sm mt-1">
-                                {quotationDetails.is_ml_predicted !== undefined 
-                                    ? (quotationDetails.is_ml_predicted 
-                                        ? `Cost predictions powered by Nalas ML Engine (Avg Confidence: ${quotationDetails.ml_confidence}%)`
-                                        : 'Cost predictions fell back to static recipe calculation.')
-                                    : 'Costing generated via dynamically mapped pricing intelligence.'}
-                            </p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-sm font-bold text-blue-800 uppercase tracking-widest">Grand Total</p>
-                            <p className="text-3xl font-black text-blue-900">₹{Number(quotationDetails.quotation?.grand_total || quotationDetails.grand_total || 0).toLocaleString()}</p>
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-blue-200/50">
-                        <div>
-                            <p className="text-xs font-bold text-blue-800/70 uppercase">Ingredient Cost</p>
-                            <p className="text-lg font-bold text-blue-900">
-                                ₹{(() => {
-                                    const q = quotationDetails.quotation || quotationDetails;
-                                    const breakdown = q.breakdown || q;
-                                    // If ingredient_cost is missing, calculate it from subtotal - labor_cost
-                                    const cost = breakdown.ingredient_cost || (Number(breakdown.subtotal || 0) - Number(breakdown.labor_cost || 0));
-                                    return Number(cost || 0).toLocaleString();
-                                })()}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-blue-800/70 uppercase">Labor Cost</p>
-                            <p className="text-lg font-bold text-blue-900">
-                                ₹{(() => {
-                                    const q = quotationDetails.quotation || quotationDetails;
-                                    const breakdown = q.breakdown || q;
-                                    return Number(breakdown.labor_cost || 0).toLocaleString();
-                                })()}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-blue-800/70 uppercase">Overheads & Tax</p>
-                            <p className="text-lg font-bold text-blue-900">
-                                ₹{(() => {
-                                    const q = quotationDetails.quotation || quotationDetails;
-                                    const breakdown = q.breakdown || q;
-                                    const overhead = Number(breakdown.overhead_cost || 0);
-                                    const tax = Number(breakdown.tax_amount || 0);
-                                    return (overhead + tax).toLocaleString();
-                                })()}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Standalone banner removed, integrated into Financial Breakdown card */}
 
             {/* Main Info Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -377,21 +380,86 @@ export default function OrderDetailsPage() {
                     </div>
                 </div>
 
-                {/* Financial Summary */}
+                {/* Financial Breakdown */}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-50 pb-2">Financial Ledger</h3>
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-50 pb-2">Financial Breakdown</h3>
                     
-                    <div className="flex items-center justify-center py-6">
-                        <div className="text-center">
-                            <p className="text-gray-500 font-medium mb-1">Current Ledger Total</p>
-                            <p className="text-4xl font-black text-gray-900">
-                                {order.status === 'draft' ? 'TBD' : `₹${parseFloat(order.total_amount || 0).toLocaleString()}`}
-                            </p>
-                            {order.status === 'draft' && (
-                                <p className="text-sm text-gray-400 mt-2">Generate quotation to predict costs</p>
-                            )}
+                    {!quotationDetails ? (
+                        <div className="flex items-center justify-center py-6">
+                            <div className="text-center">
+                                <p className="text-gray-500 font-medium mb-1">Total Selling Price</p>
+                                <p className="text-4xl font-black text-gray-900">
+                                    {order.status === 'draft' ? 'TBD' : `₹${parseFloat(order.total_amount || 0).toLocaleString()}`}
+                                </p>
+                                {order.status === 'draft' && (
+                                    <p className="text-sm text-gray-400 mt-2">Mint quotation to calculate detailed costs</p>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div className="flex flex-col">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-6 gap-x-4 mb-6">
+                                {(() => {
+                                    const q = quotationDetails.quotation || quotationDetails;
+                                    let b = q.breakdown || q;
+                                    
+                                    // Reconstruct missing detailed breakdown fields using settings if they weren't saved in DB
+                                    if (b.ingredient_cost === undefined && settings?.quotation_config && q.subtotal) {
+                                        const config = settings.quotation_config;
+                                        const guests = order.guest_count || 1;
+                                        
+                                        const lpgCost = Number(config.lpg_cost_per_guest || 0) * guests;
+                                        const transportFlat = Number(config.transport_flat || 0);
+                                        const leafCost = Number(config.leaf_cost_per_guest || 0) * guests;
+                                        const disposablesCost = Number(config.disposables_cost_per_guest || 0) * guests;
+                                        
+                                        const laborCost = Number(q.labor_cost || 0);
+                                        const subtotal = Number(q.subtotal || 0);
+                                        const overheadCost = Number(q.overhead_cost || 0);
+                                        const grandTotal = Number(q.grand_total || 0);
+                                        const taxAmount = Number(q.tax_amount || 0);
+                                        
+                                        const ingredientCost = subtotal - laborCost - lpgCost - transportFlat - leafCost - disposablesCost;
+                                        const profitAmount = grandTotal - taxAmount - subtotal - overheadCost;
+                                        
+                                        b = {
+                                            ...b,
+                                            ingredient_cost: Math.max(0, ingredientCost),
+                                            lpg_cost: lpgCost,
+                                            transport_cost: transportFlat,
+                                            leaf_cost: leafCost,
+                                            disposables_cost: disposablesCost,
+                                            profit_amount: Math.max(0, profitAmount)
+                                        };
+                                    }
+                                    
+                                    const items = [
+                                        { label: "Ingredient Cost", value: b.ingredient_cost },
+                                        { label: "Labour Cost", value: b.labour_cost || b.labor_cost },
+                                        { label: "LPG Cost", value: b.lpg_cost },
+                                        { label: "Transport", value: b.transport_cost },
+                                        { label: "Leaf & Disp.", value: (Number(b.leaf_cost || 0) + Number(b.disposables_cost || 0)) || undefined },
+                                        { label: "Overheads", value: b.overhead_cost },
+                                        { label: "Tax (GST)", value: b.tax_amount }
+                                    ];
+
+                                    return items.map((item, idx) => (
+                                        <div key={idx} className={`${item.value === undefined ? 'hidden' : ''}`}>
+                                            <p className="text-[10px] font-bold text-gray-500 uppercase">{item.label}</p>
+                                            <p className="text-base font-bold text-gray-900">₹{Number(item.value || 0).toLocaleString()}</p>
+                                        </div>
+                                    ));
+                                })()}
+                            </div>
+                            
+                            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+                                <span className="text-gray-500 font-bold uppercase tracking-wider text-xs">Total Selling Price</span>
+                                <span className="text-3xl font-black text-blue-900">
+                                    ₹{Number(quotationDetails.quotation?.grand_total || quotationDetails.grand_total || 0).toLocaleString()}
+                                </span>
+                            </div>
+                        </div>
+                    )}
 
                     {invoiceDetails && (
                         <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -404,7 +472,7 @@ export default function OrderDetailsPage() {
                             {qrDataUrl && (
                                 <div className="mt-4 pt-4 border-t border-green-200/50 flex flex-col items-center">
                                     <p className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wider">Scan to Pay Pending Amount</p>
-                                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                                    <div className="bg-white p-2 rounded-lg shadow-sm border border-green-100">
                                         <img src={qrDataUrl} alt="UPI QR Code" className="w-32 h-32 object-contain" />
                                     </div>
                                 </div>

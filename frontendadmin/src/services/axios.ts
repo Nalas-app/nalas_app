@@ -127,8 +127,8 @@ api.interceptors.response.use(
       }
     }
 
-    // Display error notification globally, except for 401s (handled by refresh logic) and refresh failures
-    if (error.response?.status !== 401 && originalRequest?.url !== '/auth/refresh') {
+    // Display error notification globally, except for 401s, refresh failures, and background QR fetches
+    if (error.response?.status !== 401 && originalRequest?.url !== '/auth/refresh' && !originalRequest?.url?.includes('/qr')) {
       if (typeof window !== "undefined") {
         toast.error(getErrorMessage(error));
       }

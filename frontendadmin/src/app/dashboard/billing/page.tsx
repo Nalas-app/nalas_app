@@ -20,6 +20,7 @@ export default function BillingManagementPage() {
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [paymentAmount, setPaymentAmount] = useState<number>(0);
     const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
+    const [paymentType, setPaymentType] = useState("partial");
     const [transactionId, setTransactionId] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -57,6 +58,7 @@ export default function BillingManagementPage() {
         setSelectedInvoice(invoice);
         setPaymentAmount(Number(invoice.pending_amount));
         setPaymentMethod("bank_transfer");
+        setPaymentType("partial");
         setTransactionId("");
         setIsPaymentModalOpen(true);
         setQrDataUrl(null);
@@ -91,7 +93,8 @@ export default function BillingManagementPage() {
                 paymentAmount, 
                 paymentMethod, 
                 transactionId || "", 
-                "Payment"
+                "", 
+                paymentType
             );
             await fetchInvoices();
             closePaymentModal();
@@ -222,6 +225,19 @@ export default function BillingManagementPage() {
                                         <option value="cash">Cash</option>
                                         <option value="card">Credit/Debit Card</option>
                                         <option value="bank_transfer">Bank Transfer (UPI/NEFT)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Payment Label</label>
+                                    <select 
+                                        value={paymentType}
+                                        onChange={e => setPaymentType(e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                    >
+                                        <option value="advance">Advance</option>
+                                        <option value="partial">Partial</option>
+                                        <option value="full">Full</option>
+                                        <option value="final">Final Settlement</option>
                                     </select>
                                 </div>
                                 
