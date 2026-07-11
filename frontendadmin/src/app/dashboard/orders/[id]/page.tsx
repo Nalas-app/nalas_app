@@ -8,7 +8,7 @@ import {
     confirmOrder, 
     updateOrderStatus
 } from "@/services/orders.service";
-import { getQuotations, getQuotationById, recordPayment, getInvoices } from "@/services/billing.service";
+import { getQuotations, getQuotationById, recordPayment, getInvoices, createQuotation } from "@/services/billing.service";
 import { getErrorMessage } from "@/utils/errorHandler";
 import Link from "next/link";
 
@@ -24,6 +24,7 @@ export default function OrderDetailsPage() {
     
     // For showing quotation details right after generation
     const [quotationDetails, setQuotationDetails] = useState<any>(null);
+    const [applyGst, setApplyGst] = useState(false);
     const [invoiceDetails, setInvoiceDetails] = useState<any>(null);
 
     const fetchOrder = async () => {
@@ -79,12 +80,12 @@ export default function OrderDetailsPage() {
     }, [orderId]);
 
     const handleGenerateQuotation = async () => {
-        if (!confirm("Are you sure you want to generate a quotation? This will use ML to predict costs and lock the draft.")) return;
+        if (!confirm(`Are you sure you want to generate a quotation? GST Application is set to: ${applyGst ? 'YES' : 'NO'}.`)) return;
         
         setActionLoading(true);
         setError("");
         try {
-            const response = await generateQuotation(orderId);
+            const response = await createQuotation(orderId, applyGst);
             setQuotationDetails(response);
             await fetchOrder(); // Refresh the status and total
         } catch (err: any) {
@@ -221,13 +222,24 @@ export default function OrderDetailsPage() {
 
                 <div className="flex gap-3">
                     {order.status === 'draft' && (
-                        <button 
-                            onClick={handleGenerateQuotation}
-                            disabled={actionLoading}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold shadow-md shadow-blue-600/20 transition flex items-center disabled:opacity-70"
-                        >
-                            {actionLoading ? "Processing ML..." : "Mint ML Quotation"}
-                        </button>
+                        <div className="flex items-center gap-3 bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+                            <label className="flex items-center gap-2 cursor-pointer pl-3 pr-2 py-1.5 hover:bg-gray-50 rounded-lg transition-colors">
+                                <input 
+                                    type="checkbox" 
+                                    checked={applyGst} 
+                                    onChange={(e) => setApplyGst(e.target.checked)} 
+                                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                />
+                                <span className="text-sm font-bold text-gray-700 select-none">Apply GST</span>
+                            </label>
+                            <button 
+                                onClick={handleGenerateQuotation}
+                                disabled={actionLoading}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold shadow-md shadow-blue-600/20 transition flex items-center disabled:opacity-70"
+                            >
+                                {actionLoading ? "Processing ML..." : "Mint ML Quotation"}
+                            </button>
+                        </div>
                     )}
                     {order.status === 'quoted' && (
                         <button 

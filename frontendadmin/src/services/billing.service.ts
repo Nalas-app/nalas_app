@@ -71,6 +71,15 @@ export const getQuotationById = async (quotationId: string): Promise<any> => {
     return response.data.data;
 };
 
+export const createQuotation = async (orderId: string, applyGst: boolean = false): Promise<any> => {
+    const payload = {
+        order_id: orderId,
+        apply_gst: applyGst
+    };
+    const response = await api.post('/billing/quotations', payload);
+    return response.data.data;
+};
+
 export const recordPayment = async (invoiceId: string, amount: number, paymentMethod: string, referenceNumber?: string, notes?: string): Promise<Payment> => {
     const payload = {
         invoice_id: invoiceId,

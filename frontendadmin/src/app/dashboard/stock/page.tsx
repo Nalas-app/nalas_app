@@ -8,6 +8,7 @@ import {
     getIngredientById,
     updateIngredient,
     deleteIngredient,
+    bulkCreateIngredients,
     StockLevel,
     StockTransactionPayload,
     IngredientPayload
@@ -55,6 +56,77 @@ export default function StockManagementPage() {
         is_perishable: false,
         shelf_life_days: ""
     });
+
+    // Bulk Add Ingredient State
+    const [isBulkIngredientModalOpen, setIsBulkIngredientModalOpen] = useState(false);
+    const [bulkIngredients, setBulkIngredients] = useState<IngredientPayload[]>([{
+        name: "",
+        unit: "kg",
+        current_price_per_unit: "",
+        reorder_level: "",
+        is_perishable: false,
+        shelf_life_days: ""
+    }]);
+
+    const addBulkRow = () => {
+        if (bulkIngredients.length >= 100) {
+            alert("Maximum 100 ingredients can be added at once.");
+            return;
+        }
+        setBulkIngredients([...bulkIngredients, {
+            name: "",
+            unit: "kg",
+            current_price_per_unit: "",
+            reorder_level: "",
+            is_perishable: false,
+            shelf_life_days: ""
+        }]);
+    };
+
+    const removeBulkRow = (index: number) => {
+        const newItems = [...bulkIngredients];
+        newItems.splice(index, 1);
+        setBulkIngredients(newItems);
+    };
+
+    const handleBulkIngredientSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const isValid = bulkIngredients.every(item => item.name && item.current_price_per_unit !== "" && item.reorder_level !== "");
+        if (!isValid) {
+            alert("Please fill in all required numeric fields for every ingredient.");
+            return;
+        }
+
+        setIsSubmitting(true);
+        setError("");
+
+        try {
+            const payload = bulkIngredients.map(item => {
+                const newItem = { ...item };
+                if (!newItem.is_perishable || newItem.shelf_life_days === "") {
+                    delete newItem.shelf_life_days;
+                }
+                return newItem;
+            });
+            await bulkCreateIngredients(payload);
+            setIsBulkIngredientModalOpen(false);
+            setBulkIngredients([{
+                name: "",
+                unit: "kg",
+                current_price_per_unit: "",
+                reorder_level: "",
+                is_perishable: false,
+                shelf_life_days: ""
+            }]);
+            await fetchData();
+        } catch (err: unknown) {
+            console.error(err);
+            setError(getErrorMessage(err, "Failed to bulk create ingredients."));
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -264,6 +336,15 @@ export default function StockManagementPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
+                    <button 
+                        onClick={() => setIsBulkIngredientModalOpen(true)}
+                        className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors flex items-center shadow-sm flex-shrink-0"
+                    >
+                        <svg className="w-5 h-5 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                        </svg>
+                        Bulk Add
+                    </button>
                     <button 
                         onClick={() => setIsIngredientModalOpen(true)}
                         className="bg-[#689F38] hover:bg-[#558B2F] text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center shadow-md flex-shrink-0"
@@ -683,6 +764,126 @@ export default function StockManagementPage() {
                             <button onClick={() => setIsEditModalOpen(false)} type="button" className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 font-bold transition-colors">Cancel</button>
                             <button type="submit" form="edit-ingredient-form" disabled={isSubmitting} className="px-6 py-2 bg-[#689F38] hover:bg-[#558B2F] text-white rounded-lg font-bold transition-colors shadow-md shadow-[#689F38]/20 flex items-center justify-center min-w-[120px]">
                                 {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Save Changes"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* --- BULK ADD INGREDIENT MODAL --- */}
+            {isBulkIngredientModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onClick={() => setIsBulkIngredientModalOpen(false)}></div>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl z-10 overflow-hidden flex flex-col transform transition-all max-h-[90vh]">
+                        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+                            <div>
+                                <h2 className="text-lg font-extrabold text-gray-900">Bulk Add Ingredients</h2>
+                                <p className="text-sm text-gray-500 font-medium">Add multiple raw materials at once (max 100)</p>
+                            </div>
+                            <button onClick={() => setIsBulkIngredientModalOpen(false)} className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-full transition-colors">
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto bg-gray-50">
+                            <form id="bulk-ingredient-form" onSubmit={handleBulkIngredientSubmit} className="space-y-4">
+                                {bulkIngredients.map((item, index) => (
+                                    <div key={index} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-start gap-4">
+                                        <div className="bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center font-bold text-gray-500 flex-shrink-0 mt-1">
+                                            {index + 1}
+                                        </div>
+                                        <div className="flex-1 space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                <div className="lg:col-span-2">
+                                                    <label className="block text-xs font-bold text-gray-700 mb-1">Ingredient Name</label>
+                                                    <input type="text" required minLength={2} maxLength={255} value={item.name} onChange={e => {
+                                                        const newItems = [...bulkIngredients];
+                                                        newItems[index].name = e.target.value;
+                                                        setBulkIngredients(newItems);
+                                                    }} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm" placeholder="e.g. Basmati Rice" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-700 mb-1">Unit</label>
+                                                    <select required value={item.unit} onChange={e => {
+                                                        const newItems = [...bulkIngredients];
+                                                        newItems[index].unit = e.target.value;
+                                                        setBulkIngredients(newItems);
+                                                    }} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm">
+                                                        <option value="kg">kg</option>
+                                                        <option value="gram">g</option>
+                                                        <option value="liter">L</option>
+                                                        <option value="ml">ml</option>
+                                                        <option value="piece">Piece</option>
+                                                        <option value="dozen">Dozen</option>
+                                                        <option value="tsp">tsp</option>
+                                                        <option value="tbsp">tbsp</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-700 mb-1">Price (₹)</label>
+                                                    <input type="number" required min="0" step="0.01" value={item.current_price_per_unit} onChange={e => {
+                                                        const newItems = [...bulkIngredients];
+                                                        newItems[index].current_price_per_unit = e.target.value === "" ? "" : parseFloat(e.target.value);
+                                                        setBulkIngredients(newItems);
+                                                    }} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm" />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-gray-700 mb-1">Reorder Level</label>
+                                                    <input type="number" required min="0" step="0.01" value={item.reorder_level} onChange={e => {
+                                                        const newItems = [...bulkIngredients];
+                                                        newItems[index].reorder_level = e.target.value === "" ? "" : parseFloat(e.target.value);
+                                                        setBulkIngredients(newItems);
+                                                    }} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm" />
+                                                </div>
+                                                <div className="flex items-center gap-2 pt-5">
+                                                    <input type="checkbox" checked={item.is_perishable} onChange={e => {
+                                                        const newItems = [...bulkIngredients];
+                                                        newItems[index].is_perishable = e.target.checked;
+                                                        setBulkIngredients(newItems);
+                                                    }} className="w-4 h-4 text-[#689F38] rounded border-gray-300 focus:ring-[#689F38]" />
+                                                    <span className="text-xs font-bold text-gray-700">Perishable?</span>
+                                                </div>
+                                                {item.is_perishable && (
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-gray-700 mb-1">Shelf Life (Days)</label>
+                                                        <input type="number" min="1" required={item.is_perishable} value={item.shelf_life_days} onChange={e => {
+                                                            const newItems = [...bulkIngredients];
+                                                            newItems[index].shelf_life_days = e.target.value === "" ? "" : parseInt(e.target.value);
+                                                            setBulkIngredients(newItems);
+                                                        }} className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        
+                                        {bulkIngredients.length > 1 && (
+                                            <button type="button" onClick={() => removeBulkRow(index)} className="mt-1 text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors flex-shrink-0" title="Remove row">
+                                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                
+                                <div className="pt-2">
+                                    <button type="button" onClick={addBulkRow} className="text-[#689F38] font-bold text-sm hover:underline flex items-center gap-1">
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Add Another Row
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <div className="px-6 py-4 border-t border-gray-100 bg-white flex justify-end gap-3 flex-shrink-0">
+                            <button onClick={() => setIsBulkIngredientModalOpen(false)} type="button" className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 font-bold transition-colors">Cancel</button>
+                            <button type="submit" form="bulk-ingredient-form" disabled={isSubmitting} className="px-6 py-2 bg-[#689F38] hover:bg-[#558B2F] text-white rounded-lg font-bold transition-colors shadow-md shadow-[#689F38]/20 flex items-center justify-center min-w-[120px]">
+                                {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : `Save ${bulkIngredients.length} Ingredients`}
                             </button>
                         </div>
                     </div>

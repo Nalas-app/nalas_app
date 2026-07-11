@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createOrder, CreateOrderPayload } from "@/services/orders.service";
+import { 
+    createOrder, 
+    CreateOrderPayload
+} from "@/services/orders.service";
 import { getMenuItems, MenuItem } from "@/services/menu.service";
 import { getErrorMessage } from "@/utils/errorHandler";
 import Link from "next/link";
@@ -16,10 +19,12 @@ export default function CreateOrderPage() {
     const [error, setError] = useState("");
 
     // Form State
+    const EVENT_TYPES = ['Marriage', 'House Warming', 'Birthday Party', 'Farewell Party', 'Baby Shower', 'Corporate Events', 'House Functions', 'Get Together', 'Other'];
+
     const [formData, setFormData] = useState<Omit<CreateOrderPayload, "order_items">>({
         event_date: "",
         event_time: "19:00",
-        event_type: "Wedding",
+        event_type: EVENT_TYPES[0],
         guest_count: 50,
         venue_address: "",
         special_requests: ""
@@ -32,7 +37,7 @@ export default function CreateOrderPage() {
     useEffect(() => {
         const fetchMenu = async () => {
             try {
-                // Fetch all active menu items by paginating up to the backend limit of 100
+                // Fetch menu
                 let allItems: MenuItem[] = [];
                 let page = 1;
                 let hasMore = true;
@@ -49,7 +54,7 @@ export default function CreateOrderPage() {
                 
                 setMenuItems(allItems.filter(item => item.is_active));
             } catch (err) {
-                setError(getErrorMessage(err, "Failed to load menu items for order creation."));
+                setError(getErrorMessage(err, "Failed to load order prerequisites."));
             } finally {
                 setIsLoading(false);
             }
@@ -196,12 +201,9 @@ export default function CreateOrderPage() {
                                 onChange={(e) => setFormData({...formData, event_type: e.target.value})}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#689F38]/50 text-gray-900 bg-white"
                             >
-                                <option value="Wedding">Wedding</option>
-                                <option value="Conference">Conference</option>
-                                <option value="Birthday">Birthday</option>
-                                <option value="Corporate">Corporate</option>
-                                <option value="Family Gathering">Family Gathering</option>
-                                <option value="Other">Other</option>
+                                {EVENT_TYPES.map(type => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
                             </select>
                         </div>
                         <div>

@@ -18,7 +18,7 @@ export interface StockTransactionPayload {
   notes?: string;
 }
 
-export const getAllStockLevels = async (page = 1, limit = 100): Promise<StockLevel[]> => {
+export const getAllStockLevels = async (page = 1, limit = 10000): Promise<StockLevel[]> => {
   const response = await api.get(`/stock/current?page=${page}&limit=${limit}`);
   return response.data.data;
 };
@@ -58,4 +58,13 @@ export const updateIngredient = async (id: string, data: Partial<IngredientPaylo
 
 export const deleteIngredient = async (id: string): Promise<void> => {
   await api.delete(`/stock/ingredients/${id}`);
+};
+
+export const bulkCreateIngredients = async (data: IngredientPayload[]): Promise<any> => {
+  const response = await api.post("/stock/ingredients/bulk", JSON.stringify(data), {
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+  return response.data;
 };
