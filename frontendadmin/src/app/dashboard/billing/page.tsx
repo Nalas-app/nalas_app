@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { 
     getInvoices, 
     recordPayment,
+    getInvoiceQR,
+    getBlankQR,
     Invoice
 } from "@/services/billing.service";
 import Link from "next/link";
@@ -20,6 +22,8 @@ export default function BillingManagementPage() {
     const [paymentMethod, setPaymentMethod] = useState("bank_transfer");
     const [transactionId, setTransactionId] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+    const [isFetchingQr, setIsFetchingQr] = useState(false);
 
     const fetchInvoices = async () => {
         setIsLoading(true);
@@ -55,11 +59,23 @@ export default function BillingManagementPage() {
         setPaymentMethod("bank_transfer");
         setTransactionId("");
         setIsPaymentModalOpen(true);
+        setQrDataUrl(null);
+        
+        if (Number(invoice.pending_amount) > 0) {
+            setIsFetchingQr(true);
+            getInvoiceQR(invoice.id)
+                .then(res => {
+                    if (res && res.qr_data_url) setQrDataUrl(res.qr_data_url);
+                })
+                .catch(err => console.warn("Failed to fetch QR code", err))
+                .finally(() => setIsFetchingQr(false));
+        }
     };
 
     const closePaymentModal = () => {
         setIsPaymentModalOpen(false);
         setSelectedInvoice(null);
+        setQrDataUrl(null);
     };
 
 
@@ -208,6 +224,25 @@ export default function BillingManagementPage() {
                                         <option value="bank_transfer">Bank Transfer (UPI/NEFT)</option>
                                     </select>
                                 </div>
+                                
+                                {paymentMethod === 'bank_transfer' && (
+                                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 flex flex-col items-center">
+                                        <p className="text-xs font-bold text-blue-900 mb-2 uppercase tracking-wider">Scan to Pay Exact Amount</p>
+                                        {isFetchingQr ? (
+                                            <div className="w-32 h-32 flex items-center justify-center bg-white rounded-lg shadow-sm border border-gray-200">
+                                                <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                                            </div>
+                                        ) : qrDataUrl ? (
+                                            <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+                                                <img src={qrDataUrl} alt="UPI QR Code" className="w-32 h-32 object-contain" />
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-gray-500">QR Code unavailable</p>
+                                        )}
+                                        <p className="text-[10px] text-blue-600 mt-2 font-medium">QR is pre-loaded with ₹{paymentAmount}</p>
+                                    </div>
+                                )}
+                                
                                 <div>
                                     <label className="block text-sm font-bold text-gray-700 mb-1">Transaction ID (Optional)</label>
                                     <input 

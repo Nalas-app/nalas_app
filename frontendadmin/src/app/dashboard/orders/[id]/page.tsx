@@ -8,7 +8,7 @@ import {
     confirmOrder, 
     updateOrderStatus
 } from "@/services/orders.service";
-import { getQuotations, getQuotationById, recordPayment, getInvoices, createQuotation } from "@/services/billing.service";
+import { getQuotations, getQuotationById, recordPayment, getInvoices, createQuotation, getInvoiceQR } from "@/services/billing.service";
 import { getErrorMessage } from "@/utils/errorHandler";
 import Link from "next/link";
 
@@ -26,6 +26,7 @@ export default function OrderDetailsPage() {
     const [quotationDetails, setQuotationDetails] = useState<any>(null);
     const [applyGst, setApplyGst] = useState(false);
     const [invoiceDetails, setInvoiceDetails] = useState<any>(null);
+    const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
     const fetchOrder = async () => {
         setIsLoading(true);
@@ -58,6 +59,15 @@ export default function OrderDetailsPage() {
                         setInvoiceDetails(invoices[0]);
                         // Patch the order's advance_paid with the invoice's paid_amount
                         data.advance_paid = invoices[0].paid_amount;
+                        
+                        try {
+                            const qrRes = await getInvoiceQR(invoices[0].id);
+                            if (qrRes && qrRes.qr_data_url) {
+                                setQrDataUrl(qrRes.qr_data_url);
+                            }
+                        } catch (qrErr) {
+                            console.warn("Failed to fetch QR code for invoice", qrErr);
+                        }
                     }
                 } catch (e) {
                     console.warn("Failed to fetch invoice for order", e);
@@ -119,6 +129,16 @@ export default function OrderDetailsPage() {
         try {
             const response = await confirmOrder(orderId);
             setInvoiceDetails(response.invoice);
+            if (response.invoice?.id) {
+                try {
+                    const qrRes = await getInvoiceQR(response.invoice.id);
+                    if (qrRes && qrRes.qr_data_url) {
+                        setQrDataUrl(qrRes.qr_data_url);
+                    }
+                } catch (qrErr) {
+                    console.warn("Failed to fetch QR code for invoice", qrErr);
+                }
+            }
             
             // If advance was collected, record it to the newly generated invoice
             if (advanceAmount > 0 && response.invoice?.id) {
@@ -379,7 +399,16 @@ export default function OrderDetailsPage() {
                                 <span>Official Invoice</span>
                                 <span>#{invoiceDetails.invoice_number}</span>
                             </p>
-                            <p className="text-xs text-green-600 mt-1">Due: {new Date(invoiceDetails.due_date).toLocaleDateString()}</p>
+                            <p className="text-xs text-green-600 mt-1 mb-3">Due: {new Date(invoiceDetails.due_date).toLocaleDateString()}</p>
+                            
+                            {qrDataUrl && (
+                                <div className="mt-4 pt-4 border-t border-green-200/50 flex flex-col items-center">
+                                    <p className="text-xs font-bold text-green-800 mb-2 uppercase tracking-wider">Scan to Pay Pending Amount</p>
+                                    <div className="bg-white p-2 rounded-lg shadow-sm">
+                                        <img src={qrDataUrl} alt="UPI QR Code" className="w-32 h-32 object-contain" />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

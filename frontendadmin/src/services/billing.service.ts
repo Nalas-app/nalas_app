@@ -96,3 +96,13 @@ export const getPaymentsForInvoice = async (invoiceId: string): Promise<Payment[
     const response = await api.get(`/billing/invoices/${invoiceId}/payments`);
     return response.data.data;
 };
+
+export const getInvoiceQR = async (invoiceId: string): Promise<{ qr_data_url: string }> => {
+    const response = await api.get(`/billing/invoices/${invoiceId}/qr`);
+    return response.data.data;
+};
+
+export const getBlankQR = async (): Promise<{ qr_data_url: string }> => {
+    const response = await api.get(`/billing/qr/blank`);
+    return response.data.data;
+};
