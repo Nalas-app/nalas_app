@@ -38,23 +38,47 @@ export default function OrdersManagementPage() {
             
             const fetchedOrders = await getOrders(1, 50, filters);
             
-            // WORKAROUND: Backend does not update order.advance_paid when payments are made.
-            // We fetch the most recent invoices and map their paid_amount to the orders to fix the UI.
+            // WORKAROUND: Backend does not update order.advance_paid when payments are made, 
+            // and it doesn't update order.total_amount when a dynamic quotation is generated!
+            // We fetch the most recent invoices & quotations and map them to the orders to fix the UI.
             try {
                 if (fetchedOrders && fetchedOrders.length > 0) {
                     const recentInvoices = await getInvoices(1, 100);
-                    if (recentInvoices && recentInvoices.length > 0) {
-                        const invoiceMap = new Map(recentInvoices.map(inv => [inv.order_id, inv.paid_amount]));
-                        const mappedOrders = fetchedOrders.map((order: any) => ({
-                            ...order,
-                            advance_paid: invoiceMap.has(order.id) ? (invoiceMap.get(order.id) || 0) : (order.advance_paid || 0)
-                        }));
+                    
+                    // We need to use api to fetch quotations with limit=100
+                    const { default: api } = await import("@/services/axios");
+                    const quotesRes = await api.get('/billing/quotations?limit=100');
+                    const recentQuotes = quotesRes.data.data || [];
+                    
+                    if ((recentInvoices && recentInvoices.length > 0) || recentQuotes.length > 0) {
+                        const invoiceMap = new Map((recentInvoices || []).map(inv => [inv.order_id, inv]));
+                        const quoteMap = new Map(recentQuotes.map((q: any) => [q.order_id, q]));
+                        
+                        const mappedOrders = fetchedOrders.map((order: any) => {
+                            let advance_paid = order.advance_paid || 0;
+                            let total_amount = order.total_amount || 0;
+                            
+                            // If there's an invoice, it's the ultimate source of truth for both.
+                            if (invoiceMap.has(order.id)) {
+                                const inv: any = invoiceMap.get(order.id);
+                                advance_paid = inv.paid_amount;
+                                total_amount = inv.total_amount;
+                            } 
+                            // Otherwise if there's a quotation, it's the source of truth for the total amount.
+                            else if (quoteMap.has(order.id)) {
+                                const q: any = quoteMap.get(order.id);
+                                total_amount = q.grand_total;
+                            }
+                            
+                            return { ...order, advance_paid, total_amount };
+                        });
+                        
                         setOrders(mappedOrders);
                         return; // Exit early since we set mapped orders
                     }
                 }
-            } catch (invoiceErr) {
-                console.warn("Failed to fetch invoices for patching advance_paid", invoiceErr);
+            } catch (err) {
+                console.warn("Failed to fetch invoices/quotations for patching financials", err);
             }
             
             setOrders(fetchedOrders || []);
