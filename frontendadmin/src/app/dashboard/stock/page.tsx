@@ -98,6 +98,24 @@ export default function StockManagementPage() {
             return;
         }
 
+        // 1) Check for internal duplicates within the bulk list
+        const bulkNames = bulkIngredients.map(item => item.name.trim().toLowerCase());
+        if (new Set(bulkNames).size !== bulkNames.length) {
+            alert("Duplicate ingredient names found within your bulk list. Please remove duplicates.");
+            return;
+        }
+
+        // 2) Check against existing ingredients in the database
+        const existingNames = new Set(stocks.map(s => s.ingredient_name.toLowerCase()));
+        const duplicateNames = bulkIngredients
+            .map(item => item.name.trim())
+            .filter(name => existingNames.has(name.toLowerCase()));
+            
+        if (duplicateNames.length > 0) {
+            alert(`The following ingredients already exist: ${duplicateNames.join(', ')}`);
+            return;
+        }
+
         setIsSubmitting(true);
         setError("");
 
@@ -210,6 +228,15 @@ export default function StockManagementPage() {
             return;
         }
 
+        // Duplicate check against existing ingredients
+        const isDuplicate = stocks.some(
+            s => s.ingredient_name.toLowerCase() === ingredientFormData.name.trim().toLowerCase()
+        );
+        if (isDuplicate) {
+            alert(`An ingredient named "${ingredientFormData.name}" already exists.`);
+            return;
+        }
+
         setIsSubmitting(true);
         setError("");
 
@@ -269,6 +296,18 @@ export default function StockManagementPage() {
         if (editIngredientFormData.current_price_per_unit === "" || editIngredientFormData.reorder_level === "") {
             alert("Please fill in all required numeric fields.");
             return;
+        }
+
+        // Duplicate check against existing ingredients (ignoring the current one being edited)
+        if (editIngredientFormData.name) {
+            const isDuplicate = stocks.some(
+                s => s.ingredient_id !== editingIngredientId && 
+                     s.ingredient_name.toLowerCase() === editIngredientFormData.name!.trim().toLowerCase()
+            );
+            if (isDuplicate) {
+                alert(`An ingredient named "${editIngredientFormData.name}" already exists.`);
+                return;
+            }
         }
         
         setIsSubmitting(true);
@@ -365,9 +404,9 @@ export default function StockManagementPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
                     </div>
-                    <div>
-                        <p className="text-sm font-bold text-gray-500 uppercase">Total Ingredients</p>
-                        <h3 className="text-2xl font-black text-gray-900">{stocks.length}</h3>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-500 uppercase truncate" title="Total Ingredients">Total Ingredients</p>
+                        <h3 className="text-xl sm:text-2xl font-black text-gray-900 truncate">{stocks.length}</h3>
                     </div>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 transition-transform hover:scale-[1.01]">
@@ -376,9 +415,9 @@ export default function StockManagementPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
-                    <div>
-                        <p className="text-sm font-bold text-gray-500 uppercase">Out of Stock</p>
-                        <h3 className="text-2xl font-black text-gray-900">{stocks.filter(s => Number(s.usable_quantity) <= 0).length}</h3>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-500 uppercase truncate" title="Out of Stock">Out of Stock</p>
+                        <h3 className="text-xl sm:text-2xl font-black text-gray-900 truncate">{stocks.filter(s => Number(s.usable_quantity) <= 0).length}</h3>
                     </div>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 transition-transform hover:scale-[1.01]">
@@ -387,9 +426,9 @@ export default function StockManagementPage() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <div>
-                        <p className="text-sm font-bold text-gray-500 uppercase">Fully Available</p>
-                        <h3 className="text-2xl font-black text-gray-900">{stocks.filter(s => Number(s.reserved_quantity) === 0).length}</h3>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[10px] sm:text-xs md:text-sm font-bold text-gray-500 uppercase truncate" title="Fully Available">Fully Available</p>
+                        <h3 className="text-xl sm:text-2xl font-black text-gray-900 truncate">{stocks.filter(s => Number(s.reserved_quantity) === 0).length}</h3>
                     </div>
                 </div>
             </div>

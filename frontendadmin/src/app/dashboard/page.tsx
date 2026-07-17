@@ -119,9 +119,9 @@ export default function DashboardOverviewPage() {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
                     <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-emerald-500/10 transition-transform group-hover:scale-110"></div>
                     <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Pipeline Value</p>
-                            <h3 className="text-3xl font-extrabold text-gray-900">
+                        <div className="min-w-0 flex-1">
+                            <p className="text-xs md:text-sm font-medium text-gray-500 mb-1 truncate" title="Pipeline Value">Pipeline Value</p>
+                            <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900 truncate">
                                 ₹{(summary?.totalRevenue || 0).toLocaleString()}
                             </h3>
                         </div>
@@ -137,9 +137,9 @@ export default function DashboardOverviewPage() {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
                     <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-purple-500/10 transition-transform group-hover:scale-110"></div>
                     <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Advance Collected</p>
-                            <h3 className="text-3xl font-extrabold text-gray-900">
+                        <div className="min-w-0 flex-1">
+                            <p className="text-xs md:text-sm font-medium text-gray-500 mb-1 truncate" title="Advance Collected">Advance Collected</p>
+                            <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900 truncate">
                                 ₹{(summary?.advanceCollected || 0).toLocaleString()}
                             </h3>
                         </div>
@@ -155,12 +155,12 @@ export default function DashboardOverviewPage() {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 relative overflow-hidden group hover:shadow-md transition-shadow">
                     <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 rounded-full bg-blue-500/10 transition-transform group-hover:scale-110"></div>
                     <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Total Orders</p>
-                            <h3 className="text-3xl font-extrabold text-gray-900">
+                        <div className="min-w-0 flex-1">
+                            <p className="text-xs md:text-sm font-medium text-gray-500 mb-1 truncate" title="Total Orders">Total Orders</p>
+                            <h3 className="text-2xl md:text-3xl font-extrabold text-gray-900 truncate">
                                 {summary?.totalOrders || 0}
                             </h3>
-                            <p className="text-xs text-blue-600 mt-2 font-medium">{summary?.activeOrders || 0} currently active</p>
+                            <p className="text-[10px] md:text-xs text-blue-600 mt-2 font-medium truncate">{summary?.activeOrders || 0} currently active</p>
                         </div>
                         <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center p-3 shadow-inner">
                             <svg className="w-full h-full" fill="none" viewBox="0 0 24 24" stroke="currentColor">
