@@ -11,6 +11,7 @@ export interface Quotation {
     grand_total: string | number;
     is_accepted: boolean;
     valid_until: string;
+    pdf_url?: string;
     created_at: string;
 }
 
@@ -23,6 +24,7 @@ export interface Invoice {
     pending_amount: string | number;
     status: 'pending' | 'partial' | 'paid' | 'overdue' | 'cancelled';
     due_date: string;
+    pdf_url?: string;
     created_at: string;
 }
 

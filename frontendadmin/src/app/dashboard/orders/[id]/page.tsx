@@ -458,6 +458,18 @@ export default function OrderDetailsPage() {
                                     ₹{Number(quotationDetails.quotation?.grand_total || quotationDetails.grand_total || 0).toLocaleString()}
                                 </span>
                             </div>
+                            
+                            <div className="mt-4 flex justify-end">
+                                <button 
+                                    onClick={() => window.print()}
+                                    className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-4 py-2.5 rounded-lg font-bold text-sm transition flex items-center gap-2 border border-blue-200"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print / Save Quotation PDF
+                                </button>
+                            </div>
                         </div>
                     )}
 
@@ -468,6 +480,18 @@ export default function OrderDetailsPage() {
                                 <span>#{invoiceDetails.invoice_number}</span>
                             </p>
                             <p className="text-xs text-green-600 mt-1 mb-3">Due: {new Date(invoiceDetails.due_date).toLocaleDateString()}</p>
+                            
+                            <div className="mb-4">
+                                <button 
+                                    onClick={() => window.print()}
+                                    className="bg-green-600 text-white hover:bg-green-700 px-4 py-2.5 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 shadow-sm"
+                                >
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print / Save Invoice PDF
+                                </button>
+                            </div>
                             
                             {qrDataUrl && (
                                 <div className="mt-4 pt-4 border-t border-green-200/50 flex flex-col items-center">
