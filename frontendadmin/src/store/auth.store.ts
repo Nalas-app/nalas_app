@@ -2,7 +2,8 @@ import { create } from "zustand";
 
 interface AuthState {
   token: string | null;
-  setToken: (token: string) => void;
+  refreshToken: string | null;
+  setToken: (token: string, refreshToken?: string) => void;
   logout: () => void;
 }
 
@@ -21,18 +22,27 @@ const removeCookie = (name: string) => {
 
 export const useAuthStore = create<AuthState>((set) => ({
   token: typeof window !== "undefined" ? localStorage.getItem("token") : null,
+  refreshToken: typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null,
 
-  setToken: (token) => {
+  setToken: (token, refreshToken) => {
     localStorage.setItem("token", token);
     setCookie("token", token);
-    set({ token });
+    
+    if (refreshToken) {
+      localStorage.setItem("refreshToken", refreshToken);
+      setCookie("refreshToken", refreshToken);
+      set({ token, refreshToken });
+    } else {
+      set({ token });
+    }
   },
 
   logout: () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     removeCookie("token");
-    set({ token: null });
-    // Force reload/redirect could be handled here or in component
+    removeCookie("refreshToken");
+    set({ token: null, refreshToken: null });
     window.location.href = "/";
   },
 }));
