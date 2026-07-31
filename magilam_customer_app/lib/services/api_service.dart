@@ -227,4 +227,40 @@ class ApiService {
     final response = await _dio.post('/stock/reserve/$orderId');
     return response.data;
   }
+  Future<Map<String, dynamic>> reserveStock(String orderId) async {
+  final response = await _dio.post('/stock/reserve/$orderId');
+  return response.data;
+}
+
+// ───────────────── Billing Endpoints ─────────────────
+
+Future<Map<String, dynamic>> getInvoiceQr(String invoiceId) async {
+  final response = await _dio.get(
+    '/billing/invoices/$invoiceId/qr',
+  );
+  return response.data;
+}
+
+Future<Map<String, dynamic>> submitPayment({
+  required String invoiceId,
+  required double amount,
+  required String transactionId,
+  String paymentMethod = 'upi',
+  String paymentType = 'full',
+  String notes = 'Paid via Customer App',
+}) async {
+  final response = await _dio.post(
+    '/billing/payments',
+    data: {
+      "invoice_id": invoiceId,
+      "payment_method": paymentMethod,
+      "payment_type": paymentType,
+      "amount": amount,
+      "transaction_id": transactionId,
+      "notes": notes,
+    },
+  );
+
+  return response.data;
+}
 }
