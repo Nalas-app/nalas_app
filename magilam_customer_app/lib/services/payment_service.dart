@@ -6,13 +6,17 @@ class PaymentResult {
   final String message;
   final String? transactionId;
 
+  final String? invoiceId;
+  final double? amount;
+
   PaymentResult({
     required this.success,
     required this.message,
     this.transactionId,
+    this.invoiceId,
+    this.amount,
   });
 }
-
 class MockPaymentService {
   Future<PaymentResult> processPayment(double amount) async {
     // Simulate network delay

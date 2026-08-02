@@ -110,6 +110,12 @@ class ApiService {
       clearToken();
     }
   }
+  Future<Map<String, dynamic>> confirmOrder(String orderId) async {
+  final response = await _dio.post(
+    '/orders/$orderId/confirm',
+  );
+  return response.data;
+}
 
   Future<Map<String, dynamic>> refreshAuthToken() async {
     final response = await _dio.post('/auth/refresh', data: {
@@ -227,10 +233,7 @@ class ApiService {
     final response = await _dio.post('/stock/reserve/$orderId');
     return response.data;
   }
-  Future<Map<String, dynamic>> reserveStock(String orderId) async {
-  final response = await _dio.post('/stock/reserve/$orderId');
-  return response.data;
-}
+
 
 // ───────────────── Billing Endpoints ─────────────────
 

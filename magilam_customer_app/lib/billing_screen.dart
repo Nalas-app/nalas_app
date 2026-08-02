@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
  import '../theme.dart';
 import 'package:provider/provider.dart';
 import 'providers/cart_provider.dart';
+import 'upi_payment_screen.dart';
 
 class BillingScreen extends StatelessWidget {
   final bool isFromOrder;
@@ -140,8 +141,16 @@ class BillingScreen extends StatelessWidget {
                       );
                       if (!context.mounted) return;
                       if (result.success) {
-                        Navigator.pushNamed(context, '/success');
-                      } else {
+                        Navigator.push(
+                          context,
+                           MaterialPageRoute(
+                            builder: (_) => UpiPaymentScreen(
+                              invoiceId: result.invoiceId!,
+                              amount: result.amount!,
+                              ),
+                              ),
+                              );
+                              } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(result.message), backgroundColor: Colors.red),
                         );

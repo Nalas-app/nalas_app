@@ -223,12 +223,37 @@ class CartProvider extends ChangeNotifier {
         );
       }
 
-      // 4. Clear Cart on Success
-      clearCart();
-      
-      _isLoadingEstimate = false;
-      notifyListeners();
-      return paymentResult;
+      // 4. Confirm Order (Generates Invoice)
+final orderId = orderResponse['data']['id'];
+
+final confirmResponse = await _api.confirmOrder(orderId);
+
+if (confirmResponse['success'] != true) {
+  _isLoadingEstimate = false;
+  notifyListeners();
+
+  return PaymentResult(
+    success: false,
+    message: confirmResponse['error']?['message'] ??
+        'Failed to confirm order',
+  );
+}
+
+final invoice = confirmResponse['data']['invoice'];
+
+// Clear cart
+clearCart();
+
+_isLoadingEstimate = false;
+notifyListeners();
+
+// Return invoice details
+return PaymentResult(
+  success: true,
+  message: 'Order Confirmed',
+  invoiceId: invoice['id'],
+  amount: (invoice['total_amount'] as num).toDouble(),
+);
     } on DioException catch (e) {
       _isLoadingEstimate = false;
       notifyListeners();
