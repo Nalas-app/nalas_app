@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
  import '../theme.dart';
 import 'package:provider/provider.dart';
 import 'providers/cart_provider.dart';
-import 'upi_payment_screen.dart';
 
 class BillingScreen extends StatelessWidget {
   final bool isFromOrder;
@@ -141,16 +140,58 @@ class BillingScreen extends StatelessWidget {
                       );
                       if (!context.mounted) return;
                       if (result.success) {
-                        Navigator.push(
-                          context,
-                           MaterialPageRoute(
-                            builder: (_) => UpiPaymentScreen(
-                              invoiceId: result.invoiceId!,
-                              amount: result.amount!,
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            title: Row(
+                              children: const [
+                                Icon(Icons.check_circle, color: Colors.green, size: 28),
+                                SizedBox(width: 8),
+                                Text('Order Submitted!'),
+                              ],
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Your order has been submitted successfully.',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 10),
+                                const Text(
+                                  'Our team will review your order, prepare a quote, and confirm it shortly.\n\nYou can track your order status in Order History.',
+                                  style: TextStyle(color: Colors.black54, fontSize: 13),
+                                ),
+                                if (result.orderId != null) ...[
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Order ID: ${result.orderId}',
+                                    style: const TextStyle(fontSize: 12, color: Colors.black45),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            actions: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context); // close dialog
+                                  Navigator.popUntil(context, (route) => route.isFirst); // back to home
+                                  Navigator.pushNamed(context, '/orders'); // open Order History
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.mossGreen,
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: const Text('View Order History'),
                               ),
-                              ),
-                              );
-                              } else {
+                            ],
+                          ),
+                        );
+                      } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(result.message), backgroundColor: Colors.red),
                         );

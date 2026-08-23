@@ -3,11 +3,27 @@ import 'package:dio/dio.dart';
 import '../models/cart_item.dart';
 import '../models/menu_item.dart';
 import '../services/api_service.dart';
-import '../services/payment_service.dart';
+
+/// Returned from [CartProvider.confirmOrder] to carry invoice details
+/// or an error message to the calling UI.
+class PaymentResult {
+  final bool success;
+  final String message;
+  final String? invoiceId;
+  final double? amount;
+  final String? orderId; // returned after successful order submission
+
+  PaymentResult({
+    required this.success,
+    required this.message,
+    this.invoiceId,
+    this.amount,
+    this.orderId,
+  });
+}
 
 class CartProvider extends ChangeNotifier {
   final ApiService _api = ApiService();
-  final MockPaymentService _paymentService = MockPaymentService();
   final Map<String, CartItem> _items = {};
 
   // Costing engine state
@@ -188,19 +204,11 @@ class CartProvider extends ChangeNotifier {
       }
     }
 
-    _isLoadingEstimate = true; // Use this as general loading state
+    _isLoadingEstimate = true;
     notifyListeners();
 
     try {
-      // 1. Process Payment
-      final paymentResult = await _paymentService.processPayment(estimatedTotal);
-      if (!paymentResult.success) {
-        _isLoadingEstimate = false;
-        notifyListeners();
-        return paymentResult;
-      }
-
-      // 2. Build order data matching backend createOrderSchema
+      // Build order payload
       final orderData = <String, dynamic>{
         'event_date': eventDetails?['event_date'] ?? DateTime.now().add(const Duration(days: 7)).toIso8601String().split('T')[0],
         'event_time': eventDetails?['event_time'] ?? '18:00',
@@ -210,7 +218,6 @@ class CartProvider extends ChangeNotifier {
         'order_items': toOrderPayload(),
       };
 
-      // 3. Create Order
       debugPrint('SENDING PAYLOAD: $orderData');
       final orderResponse = await _api.createOrder(orderData);
 
@@ -223,46 +230,38 @@ class CartProvider extends ChangeNotifier {
         );
       }
 
-      // 4. Confirm Order (Generates Invoice)
-final orderId = orderResponse['data']['id'];
+      // Order submitted successfully.
+      // Admin will review → quote → confirm the order.
+      // Customer tracks progress in Order History.
+      final orderId = orderResponse['data']?['id']?.toString();
 
-final confirmResponse = await _api.confirmOrder(orderId);
+      clearCart();
+      _isLoadingEstimate = false;
+      notifyListeners();
 
-if (confirmResponse['success'] != true) {
-  _isLoadingEstimate = false;
-  notifyListeners();
-
-  return PaymentResult(
-    success: false,
-    message: confirmResponse['error']?['message'] ??
-        'Failed to confirm order',
-  );
-}
-
-final invoice = confirmResponse['data']['invoice'];
-
-// Clear cart
-clearCart();
-
-_isLoadingEstimate = false;
-notifyListeners();
-
-// Return invoice details
-return PaymentResult(
-  success: true,
-  message: 'Order Confirmed',
-  invoiceId: invoice['id'],
-  amount: (invoice['total_amount'] as num).toDouble(),
-);
+      return PaymentResult(
+        success: true,
+        message: 'Order submitted successfully!',
+        orderId: orderId,
+      );
     } on DioException catch (e) {
       _isLoadingEstimate = false;
       notifyListeners();
       final responseData = e.response?.data;
-      String msg = 'Server error';
+      String msg = 'Server error (${e.response?.statusCode})';
       if (responseData is Map<String, dynamic>) {
-        msg = responseData['error']?['message'] ?? responseData['message'] ?? 'Server error (${e.response?.statusCode})';
-        final details = responseData['error']?['details'];
-        if (details != null) msg = '$msg: $details';
+        final errorBlock = responseData['error'];
+        if (errorBlock is Map<String, dynamic>) {
+          msg = errorBlock['message']?.toString() ?? msg;
+          final details = errorBlock['details'];
+          if (details is String && details.isNotEmpty) {
+            msg = '$msg: $details';
+          } else if (details is Map && details.isNotEmpty) {
+            msg = '$msg: $details';
+          }
+        } else {
+          msg = responseData['message']?.toString() ?? msg;
+        }
       }
       return PaymentResult(success: false, message: msg);
     } catch (e) {

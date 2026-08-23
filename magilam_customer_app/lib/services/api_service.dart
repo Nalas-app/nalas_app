@@ -117,6 +117,12 @@ class ApiService {
   return response.data;
 }
 
+  /// Customer self-service: auto-quotes + confirms order → returns invoice
+  Future<Map<String, dynamic>> placeOrder(String orderId) async {
+    final response = await _dio.post('/orders/$orderId/place');
+    return response.data;
+  }
+
   Future<Map<String, dynamic>> refreshAuthToken() async {
     final response = await _dio.post('/auth/refresh', data: {
       if (_refreshToken != null) 'refreshToken': _refreshToken,
