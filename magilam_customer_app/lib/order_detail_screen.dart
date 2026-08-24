@@ -3,6 +3,7 @@ import 'theme.dart';
 import 'package:provider/provider.dart';
 import 'providers/order_provider.dart';
 import 'models/order.dart';
+import 'upi_payment_screen.dart';
 
 class OrderDetailScreen extends StatefulWidget {
   final String orderId;
@@ -406,6 +407,89 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         ),
                       ],
                     ),
+
+                  // UPI Payment Button — shown when order is confirmed and has an unpaid invoice
+                  if (!order.isDraft && order.invoice != null &&
+                      order.invoice!.paymentStatus?.toLowerCase() != 'paid')
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => UpiPaymentScreen(
+                                invoiceId: order.invoice!.id,
+                                amount: order.invoice!.totalAmount,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.qr_code),
+                        label: const Text("Pay via UPI"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.mossGreen,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Invoice Info Card — shown when invoice exists
+                  if (order.invoice != null) ...[
+                    const SizedBox(height: 16),
+                    Card(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      color: order.invoice!.paymentStatus?.toLowerCase() == 'paid'
+                          ? Colors.green.shade50
+                          : Colors.orange.shade50,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  order.invoice!.paymentStatus?.toLowerCase() == 'paid'
+                                      ? Icons.check_circle
+                                      : Icons.receipt_long,
+                                  color: order.invoice!.paymentStatus?.toLowerCase() == 'paid'
+                                      ? Colors.green
+                                      : Colors.orange,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  "Invoice",
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                              ],
+                            ),
+                            const Divider(),
+                            if (order.invoice!.invoiceNumber != null)
+                              _buildDetailRow(Icons.tag, "Invoice #", order.invoice!.invoiceNumber!),
+                            _buildDetailRow(
+                              Icons.currency_rupee,
+                              "Amount",
+                              "₹${order.invoice!.totalAmount.toStringAsFixed(2)}",
+                            ),
+                            _buildDetailRow(
+                              Icons.payment,
+                              "Status",
+                              (order.invoice!.paymentStatus ?? 'pending').toUpperCase(),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 30),
                 ],

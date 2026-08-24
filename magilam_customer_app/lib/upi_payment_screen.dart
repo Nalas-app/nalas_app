@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'services/api_service.dart';
 import 'theme.dart';
@@ -43,14 +44,13 @@ class _UpiPaymentScreenState extends State<UpiPaymentScreen> {
     setState(() {
       loading = true;
       loadError = null;
+      qrData = null;
     });
     try {
       final response = await api.getInvoiceQr(widget.invoiceId);
       String? raw;
 
-      // The backend may return either:
-      //   { "qr_data_url": "data:image/png;base64,..." }  OR
-      //   { "qr_data_url": "<raw base64 string>" }
+      // Backend may return: { data: { qr_data_url: "..." } } OR { qr_data_url: "..." }
       if (response['data'] != null && response['data']['qr_data_url'] != null) {
         raw = response['data']['qr_data_url'].toString();
       } else if (response['qr_data_url'] != null) {
@@ -58,25 +58,23 @@ class _UpiPaymentScreenState extends State<UpiPaymentScreen> {
       }
 
       if (raw != null && raw.isNotEmpty) {
-        // Strip the data-URL prefix if present
-        if (raw.contains(',')) {
-          raw = raw.split(',').last;
-        }
-        setState(() {
-          qrData = raw;
-          loading = false;
-        });
+        // Strip "data:image/png;base64," prefix if present
+        if (raw.contains(',')) raw = raw.split(',').last;
+        setState(() { qrData = raw; loading = false; });
       } else {
-        setState(() {
-          loadError = 'QR code not available. Please try again.';
-          loading = false;
-        });
+        setState(() { loadError = 'QR code not available from server.'; loading = false; });
       }
+    } on DioException catch (e) {
+      // Extract the real backend error message instead of the raw Dio exception
+      String msg = 'QR code unavailable (${e.response?.statusCode ?? 'network error'})';
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final errBlock = data['error'];
+        msg = (errBlock is Map ? errBlock['message']?.toString() : data['message']?.toString()) ?? msg;
+      }
+      setState(() { loadError = msg; loading = false; });
     } catch (e) {
-      setState(() {
-        loadError = 'Failed to load QR: ${e.toString()}';
-        loading = false;
-      });
+      setState(() { loadError = 'Could not load QR code. You can still pay manually.'; loading = false; });
     }
   }
 
@@ -109,11 +107,11 @@ class _UpiPaymentScreenState extends State<UpiPaymentScreen> {
         barrierDismissible: false,
         builder: (_) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
+          title: const Row(
             children: [
-              const Icon(Icons.check_circle, color: Colors.green, size: 28),
-              const SizedBox(width: 8),
-              const Text('Payment Submitted'),
+              Icon(Icons.check_circle, color: Colors.green, size: 28),
+              SizedBox(width: 8),
+              Text('Payment Submitted'),
             ],
           ),
           content: const Text(
@@ -135,13 +133,21 @@ class _UpiPaymentScreenState extends State<UpiPaymentScreen> {
           ],
         ),
       );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      String msg = 'Submission failed';
+      final data = e.response?.data;
+      if (data is Map<String, dynamic>) {
+        final errBlock = data['error'];
+        msg = (errBlock is Map ? errBlock['message']?.toString() : data['message']?.toString()) ?? msg;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: Colors.red),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Submission failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Submission failed: $e'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) setState(() => submitting = false);
@@ -159,39 +165,7 @@ class _UpiPaymentScreenState extends State<UpiPaymentScreen> {
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
-          : loadError != null
-              ? _buildErrorState()
-              : _buildPaymentContent(),
-    );
-  }
-
-  Widget _buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.qr_code_2, size: 80, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-              loadError!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15, color: Colors.black54),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _loadQR,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.mossGreen,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
+          : _buildPaymentContent(),
     );
   }
 
@@ -231,6 +205,7 @@ class _UpiPaymentScreenState extends State<UpiPaymentScreen> {
           const SizedBox(height: 12),
 
           if (qrData != null)
+            // QR loaded successfully
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -254,6 +229,39 @@ class _UpiPaymentScreenState extends State<UpiPaymentScreen> {
                       ),
                     ),
                   ),
+                ),
+              ),
+            )
+          else
+            // QR failed — non-blocking: show error + retry, but user can still submit UTR
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              color: Colors.orange.shade50,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    const Icon(Icons.qr_code_2, size: 64, color: Colors.orange),
+                    const SizedBox(height: 12),
+                    Text(
+                      loadError ?? 'QR code unavailable',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 13, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Pay using the merchant\'s UPI ID directly in GPay / PhonePe, then enter your Transaction ID below.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Colors.black45),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton.icon(
+                      onPressed: _loadQR,
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Retry QR'),
+                    ),
+                  ],
                 ),
               ),
             ),

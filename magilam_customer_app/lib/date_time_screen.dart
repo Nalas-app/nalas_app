@@ -17,11 +17,14 @@ class _DateTimeScreenState extends State<DateTimeScreen> {
   final TextEditingController _venueController = TextEditingController();
 
   final List<String> eventTypes = [
-    'Wedding',
-    'Conference',
-    'Birthday',
-    'Corporate',
-    'Family Gathering',
+    'Marriage',
+    'House Warming',
+    'Birthday Party',
+    'Farewell Party',
+    'Baby Shower',
+    'Corporate Events',
+    'House Functions',
+    'Get Together',
     'Other',
   ];
 
